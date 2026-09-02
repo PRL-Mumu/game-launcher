@@ -1,0 +1,60 @@
+(in-package #:game-launcher)
+
+(defclass wine-launcher (launcher)
+  ())
+
+(defun make-wine-launcher (&key name profile exec)
+  (let ((launcher
+          (make-instance 'wine-launcher
+            :name name
+            :profile profile
+            :exec exec)))
+    launcher))
+
+(defmethod launch ((launcher wine-launcher))
+  (let* ((exe (pathname (launcher-exec launcher)))
+         (dir (pathname-directory-pathname exe)))
+    (sb-ext:run-program
+	"/home/rush/common-lisp/lutris-GE-Proton8-26-x86_64/bin/wine"
+      (list (namestring exe))
+      :directory dir
+      :environment (build-environment (launcher-profile launcher))
+      :search t
+      :output *standard-output*
+      :wait t)))
+
+(defmethod kill ((launcher wine-launcher))
+    (sb-ext:run-program
+      "wineserver"
+      (list "-k")
+      :environment (build-environment (launcher-profile launcher))
+      :search t
+      :output *standard-output*
+      :wait t))
+
+(defmethod launcher-runtime ((launcher wine-launcher))
+  'wine)
+
+(defmethod status ((launcher wine-launcher)
+                   &optional (stream *standard-output*))
+  (format stream "NAME: ~A~%" (launcher-name launcher))
+  (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
+  (format stream "EXEC: ~A~%" (launcher-exec launcher)))
+
+(defparameter *wine-basic-profile*
+  (env
+    ("DXVK_ASYNC" "1")
+    ("WINE_LARGE_ADDRESS_AWARE" "0")))
+
+(defmethod launcher->form ((launcher wine-launcher))
+    `(make-launcher
+       'wine
+       :name ,(launcher-name launcher)
+       :profile
+       ,(let ((env (profile-env (launcher-profile launcher))))
+	  `(env ,@env))
+       :exec ,(launcher-exec launcher)))
+
+(register-launcher
+  'wine
+  #'make-wine-launcher)

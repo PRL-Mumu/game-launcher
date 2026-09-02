@@ -1,0 +1,28 @@
+
+((XSYSTEM4 :NAME "Sengoku Rance" :EXEC
+  "/home/rush/Downloads/Sengoku Rance/System40.exe")
+ (EXEC :NAME "Minecraft Launcher" :EXEC "minecraft")
+ (STEAM :NAME "Elin JRPG" :EXEC "steam://rungameid/2135150")
+ (STEAM :NAME "Brawlhalla" :EXEC "steam://rungameid/291550")
+ (STEAM :NAME "Peggle" :EXEC "steam://rungameid/3480")
+ (STEAM :NAME "Terraria" :EXEC "steam://rungameid/105600")
+ (EXEC :NAME "Cataclysm Bright Nights" :EXEC
+  "/home/rush/Games/cataclysmbn-v0.12.0/cataclysm-launcher")
+ (WINE :NAME "Touhou 9" :PROFILE
+  (("DXVK_ASYNC" "1") ("WINE_LARGE_ADDRESS_AWARE" "0")) :EXEC
+  "/mnt/Old_HDD/home/rush/Games/Touhou 9 - Phantasmagoria of Flower View/th09.exe")
+ (WINE :NAME "Touhou 8 - Imperishable Night" :PROFILE
+  (("DXVK_ASYNC" "1") ("WINE_LARGE_ADDRESS_AWARE" "0")) :EXEC
+  "/mnt/Old_HDD/home/rush/Games/Touhou 8 - Imperishable Night/Touhou08.exe")
+ (WINE :NAME "Arknights" :EXEC
+  "/home/rush/.wine/drive_c/YostarGames/Arknights_EN_Gamelauncher/Arknights_EN_Gamelauncher.exe")
+ (WINE :NAME "Bunny Black" :PROFILE
+  (("DXVK_ASYNC" "1") ("WINE_LARGE_ADDRESS_AWARE" "0")
+   ("MANGOHUD_CONFIG" "gpu_temp,cpu_temp,vram,ram"))
+  :EXEC "/mnt/Old_HDD/home/rush/Games/BUNNY_BLACK/Bunny Black/Bunny.exe")
+ (EXEC :NAME "Monster Hunter Frontier Z" :PROFILE (("MHF_PASS" "mmofan")) :EXEC
+  "/home/rush/Downloads/MHFCT4.1/mhf-cli" :ARGS
+  ("-u" "MMOFAN" "--char-id" "5" "--game-dir" "."))
+ (WINE :NAME "Ragnarok Online" :PROFILE
+  (("DXVK_ASYNC" "1") ("WINE_LARGE_ADDRESS_AWARE" "0")) :EXEC
+  "/home/rush/.wine/drive_c/users/rush/AppData/Local/Programs/UaRO World of Your Dream/UaRo Patcher.exe"))
