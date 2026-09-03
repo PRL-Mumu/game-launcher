@@ -63,7 +63,8 @@
 		   &optional (stream *standard-output*))
   (format stream "NAME: ~A~%" (launcher-name launcher))
   (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "EXEC: ~A~%" (launcher-exec launcher)))
+  (format stream "EXEC: ~A~%" (launcher-exec launcher))
+  (format stream "ARGS ~A~%" (launcher-args launcher)))
 
 (defparameter *wine-basic-profile*
   '(("DXVK_ASYNC" "1")
