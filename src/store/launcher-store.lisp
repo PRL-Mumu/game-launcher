@@ -1,1 +1,0 @@
-/home/rush/.config/game-launcher/launcher-store.lisp
