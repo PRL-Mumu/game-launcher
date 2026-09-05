@@ -4,16 +4,23 @@
 
 (in-package :game-launcher)
 
-(defun main ()
+(defun main (&rest args)
   (with-launcher-session ()
-			 (let ((args (cdr sb-ext:*posix-argv*)))
-			   (if args
-			     ;; Command-line mode
-			     (let ((launcher (select-launcher (first args))))
-			       (cond
-				 (launcher
-				   (format t "launching: ~A~%" (launcher-name launcher))
-				   (launch launcher))
-				 (t (format t "No matching launcher.~%"))))
-			     ;; Interactive mode
-			     (prompt-launcher-list)))))
+    (cond
+      ((string= (first args) "--import")
+       (import-launcher-form
+        (read-from-string (second args))))
+
+	((string= (first args) "--list")
+	(display-launchers (launcher-list)))
+      (args
+       (let ((launcher (select-launcher (first args))))
+         (cond
+           (launcher
+            (format t "launching: ~A~%" (launcher-name launcher))
+            (launch launcher))
+           (t
+            (format t "No matching launcher.~%")))))
+
+      (t
+       (prompt-launcher-list)))))

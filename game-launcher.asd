@@ -22,4 +22,6 @@
 		     :components
 		     ((:file "launcher-class")
 		      (:file "unknown-launcher-class")))
+	    (:module "imports"
+		     :components ((:file "import")))
 	    (:file "launcher")))

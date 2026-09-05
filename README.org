@@ -8,6 +8,20 @@ Rather than being tied to a particular storefront or game runtime, ~game-launche
 
 The project is intended to make it possible to describe game launch configurations in a simple, extensible format while allowing different runtimes and launcher implementations to coexist.
 
+* Install
+
+** dependecy
+
+make sure to install for your system
+
+Rosswell https://github.com/roswell/roswell
+
+after setup
+
+#+begin_src bash
+  ros install PRL-Mumu/game-launcher
+#+end_src
+
 * Current Implementation Features
 
 ** Launcher Definitions
