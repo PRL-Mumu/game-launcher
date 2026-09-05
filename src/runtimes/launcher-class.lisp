@@ -17,15 +17,6 @@
 
 (defgeneric status (launcher &optional stream))
 
-;; (defgeneric launcher->form (launcher))
-;; (defmethod launcher->form ((launcher launcher))
-;;   `(,(launcher-runtime launcher)
-;;      :name ,(launcher-name launcher)
-;;      :profile
-;;      ,(let ((env (profile-env (launcher-profile launcher))))
-;; 	`(env ,@env))
-;;      :exec ,(launcher-exec launcher)))
-
 (defmethod launcher->form ((launcher launcher))
   (append
    `(,(launcher-runtime launcher)

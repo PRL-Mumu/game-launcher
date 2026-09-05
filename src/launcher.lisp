@@ -20,6 +20,7 @@
     (when choice
       (find-launcher choice))))
 
+
 (defun search-launcher-list (query)
   (fuzzy-match:fuzzy-match
    query
@@ -45,7 +46,6 @@
     (cond
       ((string-equal input "q")
        nil)
-
       (t
        (let ((n (parse-integer input :junk-allowed t)))
          (when (and n
@@ -112,19 +112,6 @@
 
 			     ;; Interactive mode
 			     (prompt-launcher-list)))))
-
-
-;; (defun main (&optional args)
-;;   (with-launcher-session ()
-;;     (loop
-;;       (format t "Search Game: ")
-;;       (let ((query (read-line)))
-;;         (when (string= query "q")
-;;           (return))
-;;         (let ((launcher (select-launcher query)))
-;;           (if launcher
-;;               (launch launcher)
-;;               (format t "No matching launcher.~%")))))))
 
 
 (defun entry-point ()
