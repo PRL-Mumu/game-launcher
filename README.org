@@ -1,7 +1,6 @@
 #+TITLE: game-launcher
 #+AUTHOR: Rush
 
-* game-launcher
 
 ~game-launcher~ is a Common Lisp-based game launcher framework designed to bridge some of the shortcomings of general-purpose game launchers.
 
