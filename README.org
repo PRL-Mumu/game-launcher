@@ -1,0 +1,95 @@
+#+TITLE: game-launcher
+#+AUTHOR: Rush
+
+* game-launcher
+
+~game-launcher~ is a Common Lisp-based game launcher framework designed to bridge some of the shortcomings of general-purpose game launchers.
+
+Rather than being tied to a particular storefront or game runtime, ~game-launcher~ provides a framework for representing games, their launch configurations, and the runtimes required to start them.
+
+The project is intended to make it possible to describe game launch configurations in a simple, extensible format while allowing different runtimes and launcher implementations to coexist.
+
+* Current Implementation Features
+
+** Launcher Definitions
+
+Games can be represented as launcher objects containing the information required to start them.
+#+begin_src common-lisp
+  (let (launcher (make-instance 'wine-launcher
+   :name Touhou 6
+   :exec "path/to/touhou")
+  (launcher-launch launcher)))
+#+end_src
+
+** Runtime Support
+
+Launchers can be associated with different runtime implementations, allowing the same framework to handle games that require different ways of being executed.
+
+*** TODO: simplify implementation for new runtimes
+the current setup requires some boilerplate
+
+** Form-Based Serialization
+
+Launcher configurations are represented as Lisp forms and can be written to and restored from a file.
+
+#+begin_src common-lisp
+ (EXEC :NAME "Cataclysm Bright Nights" :EXEC
+  "~/Games/cataclysmbn-v0.12.0/cataclysm-launcher")
+#+end_src
+
+** Unknown Launchers
+
+Launcher configurations using an unknown or unavailable runtime are preserved rather than discarded.
+
+Unknown forms are stored as raw serialized data and can be written back to the launcher file later.
+
+** Extensible Architecture
+
+The launcher and runtime systems are designed around Common Lisp's object system, making it possible to add new launcher and runtime types without changing the core serialization mechanism.
+
+* Planned Features
+
+** Launcher Profiles
+
+Support multiple profiles for the same game, allowing different launch configurations and runtime settings.
+
+TODO: make runtimes recognise and save prefixes
+ (env ("WINEPREFIX" "/path/to/prefix")) -> *wine-prefix*
+
+** Runtime Management
+
+Improve runtime discovery and management, including easier configuration of external runtimes.
+
+*** planned: procedure type runtimes
+configure a runtime to use multiple runtimes in a procedure
+
+** Environment Configuration
+
+Allow launchers to define environment variables and other process-level configuration.
+
+** Launcher Import and Export
+
+Provide mechanisms for importing and exporting launcher configurations to other game-launching tools.
+Useful for integration and extention.
+
+** Command-Line Interface
+
+Provide a dedicated command-line interface for creating, inspecting, and launching games.
+*** planned, move to roswell scripts
+
+** Emacs Integration
+
+Provide an Emacs interface for managing and launching games directly from Emacs.
+*** emacs plugin WIP
+
+** Additional Runtime Backends
+
+Expand support for different game engines, compatibility layers, and external runtime systems.
+
+* Design Goals
+
+- Keep the core framework small.
+- Represent launcher configuration as data.
+- Preserve configurations even when their runtime is unavailable.
+- Make adding new runtimes straightforward.
+- Make the framework usable both as a library and as a standalone launcher.
