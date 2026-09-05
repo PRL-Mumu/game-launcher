@@ -1,0 +1,52 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '(:game-launcher :ltk) :silent t)
+  )
+
+(in-package :ltk)
+(defun main ()
+  (defvar plusheight 30)
+  (game-launcher:initialize-launcher)
+  (with-ltk ()
+	    (let ((launchers (game-launcher::launcher-list))
+		  (alt-color 0))
+	      (let ((frame (make-instance 'frame)))
+		(pack frame :fill :both :expand t)
+
+		(let ((title (make-instance 'label
+					    :master frame
+					    :text "GAME-LAUNCHER"
+					    :font "Helvetica 18")))
+		  (pack title :side :top))
+
+		(dolist (launcher launchers)
+		  (let* ((name (game-launcher::launcher-name launcher))
+			 (bg-color (if (evenp alt-color) "grey" "aliceblue"))
+			 (row (make-instance 'frame
+					     :master frame))
+			 (label (make-instance 'label
+					       :master row
+					       :text name
+					       :font "Helvetica 12"
+					       :background bg-color))
+			 (btn (make-instance 'button
+					     :master row
+					     :text "Launch"
+					     :command (lambda ()
+							(game-launcher::launch launcher)))))
+		    (pack row :side :top :fill :x :pady 0)
+		    (pack label :side :left :padx 4 :pady 1 :expand t :fill :x)
+		    (pack btn :side :right :padx 4 :pady 1))
+		  (incf plusheight 28)
+		  (incf alt-color)
+		  )))
+	    (let ((w 500) (h plusheight))
+	      (set-geometry *tk* w h (- (/ 1920 2) (/ w 2)) (- (/ 1080 2) (/ h 2))))
+	    ))
+;;; vim: set ft=lisp lisp:

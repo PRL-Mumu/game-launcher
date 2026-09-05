@@ -10,7 +10,9 @@
 	    #:fuzzy-match
 	    #:bordeaux-threads
 	    #:cl-dbi
-	    #:dbd-sqlite3)
+	    #:dbd-sqlite3
+	    #:cl-json
+	    #:dexador)
 
 	   :pathname "src"
 

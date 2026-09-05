@@ -13,30 +13,35 @@ exec ros -Q -- $0 "$@"
 (defun main (&rest args)
   (with-launcher-session ()
 			 (cond
-			   ((string= (first args) "--import")
-			    (cond
-			      ;import form
-			      ((string= (second args) "form")
-			       (import-launcher-form
-				 (read-from-string (third args))))
-			      ((string= (second args) "desktop")
-			       (import-desktop-file (third args)))
-			      ;default use form
-			      (t (import-launcher-form
-				 (read-from-string (second args))))
-			      ))
+			  ((string= (first args) "--import")
+			   (cond
+					;import form
+			    ((string= (second args) "form")
+			     (import-launcher-form
+			      (read-from-string (third args))))
+			    ((string= (second args) "desktop")
+			     (import-desktop-file (third args)))
 
-			   ((string= (first args) "--list")
-			    (display-launchers (launcher-list)))
-			   (args
-			     (let ((launcher (select-launcher (first args))))
-			       (cond
-				 (launcher
-				   (format t "launching: ~A~%" (launcher-name launcher))
-				   (launch launcher))
-				 (t
-				   (format t "No matching launcher.~%")))))
+			    ((string= (second args) "steam-id")
+			     (import-steam-id (third args)))
 
-			   (t
-			     (prompt-launcher-list)))))
+
+					;default use form
+			    (t (import-launcher-form
+				(read-from-string (second args))))
+			    ))
+
+			  ((string= (first args) "--list")
+			   (display-launchers (launcher-list)))
+			  (args
+			   (let ((launcher (select-launcher (first args))))
+			     (cond
+			      (launcher
+			       (format t "launching: ~A~%" (launcher-name launcher))
+			       (launch launcher))
+			      (t
+			       (format t "No matching launcher.~%")))))
+
+			  (t
+			   (prompt-launcher-list)))))
 ;;; vim: set ft=lisp lisp:
