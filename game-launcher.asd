@@ -20,5 +20,6 @@
 	    (:file "registry")
 	    (:module "runtimes"
 		     :components
-		     ((:file "launcher-class")))
+		     ((:file "launcher-class")
+		      (:file "unknown-launcher-class")))
 	    (:file "launcher")))
