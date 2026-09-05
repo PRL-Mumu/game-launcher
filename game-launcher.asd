@@ -8,7 +8,9 @@
 	   :depends-on
 	   (#:uiop
 	    #:fuzzy-match
-	    #:bordeaux-threads)
+	    #:bordeaux-threads
+	    #:cl-dbi
+	    #:dbd-sqlite3)
 
 	   :pathname "src"
 
