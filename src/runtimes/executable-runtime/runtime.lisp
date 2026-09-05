@@ -42,9 +42,4 @@
     (when (launcher-args launcher)
       `(:args ,(launcher-args launcher)))))
 
-(defmethod launcher-runtime ((launcher executable-launcher))
-  'exec)
-
-(register-launcher
-  'exec
-  #'make-executable-launcher)
+(define-launcher-runtime exec executable-launcher make-executable-launcher)

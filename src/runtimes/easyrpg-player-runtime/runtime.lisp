@@ -27,9 +27,4 @@
   (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
   (format stream "EXEC: ~A~%" (launcher-exec launcher)))
 
-(defmethod launcher-runtime ((launcher easyrpg-player-launcher))
-  'easyrpg-player)
-
-(register-launcher
-  'easyrpg-player
-  #'make-easyrpg-player-launcher)
+(define-launcher-runtime easyrpg-player easyrpg-player-launcher make-easyrpg-player-launcher)

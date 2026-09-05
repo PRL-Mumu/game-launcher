@@ -26,19 +26,7 @@
   (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
   (format stream "EXEC: ~A~%" (launcher-exec launcher)))
 
-(defmethod launcher-runtime ((launcher steam-launcher))
-  'steam)
-
-;; (defmethod launcher->form ((launcher steam-launcher))
-;;   `(make-launcher
-;;      ',(launcher-runtime launcher)
-;;      :name ,(launcher-name launcher)
-;;      :profile
-;;      ,(let ((env (profile-env (launcher-profile launcher))))
-;; 	`(env ,@env))
-;;      :exec ,(launcher-exec launcher)))
-
-
-(register-launcher
-  'steam
-  #'make-steam-launcher)
+(define-launcher-runtime 
+  steam 
+  steam-launcher 
+  make-steam-launcher)

@@ -55,10 +55,6 @@
   (kill launcher)
   nil)
 
-
-(defmethod launcher-runtime ((launcher wine-launcher))
-  'wine)
-
 (defmethod status ((launcher wine-launcher)
 		   &optional (stream *standard-output*))
   (format stream "NAME: ~A~%" (launcher-name launcher))
@@ -70,6 +66,7 @@
   '(("DXVK_ASYNC" "1")
     ("WINE_LARGE_ADDRESS_AWARE" "0")))
 
-(register-launcher
-  'wine
-  #'make-wine-launcher)
+(define-launcher-runtime 
+  wine 
+  wine-launcher 
+  make-wine-launcher)

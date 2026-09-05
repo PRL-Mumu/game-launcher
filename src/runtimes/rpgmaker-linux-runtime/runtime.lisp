@@ -24,9 +24,7 @@
       :output *standard-output*
       :wait nil)))
 
-(defmethod launcher-runtime ((launcher rpgmaker-linux-launcher))
-  'rpgmaker)
-
-(register-launcher
-  'rpgmaker
-  #'make-rpgmaker-linux-launcher)
+(define-launcher-runtime 
+  rpgmaker 
+  rpgmaker-linux-launcher 
+  make-rpgmaker-linux-launcher)

@@ -43,16 +43,4 @@
    :output *standard-output*
    :wait t))
 
-(defmethod launcher-runtime ((launcher proton-launcher))
-  'proton)
-
-(defmethod status ((launcher proton-launcher)
-                   &optional (stream *standard-output*))
-  (format stream "NAME: ~A~%" (launcher-name launcher))
-  (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "EXEC: ~A~%" (launcher-exec launcher)))
-
-
-(register-launcher
- 'proton
- #'make-proton-launcher)
+(define-launcher-runtime proton proton-launcher make-proton-launcher)

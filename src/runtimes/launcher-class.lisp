@@ -37,9 +37,18 @@
   (merge-pathnames "src/runtimes/"
 		   (asdf:system-source-directory :game-launcher)))
 
+
+(defmacro define-launcher-runtime (name class constructor)
+  "macro to quickly register your runtime"
+  `(progn
+     (defmethod launcher-runtime ((launcher ,class))
+       ',name)
+     (register-launcher ',name #',constructor)))
+
+
 (defun runtime-file-provides (file)
-  "Read FILE without evaluating it, collecting the runtime symbols
-  its (register-launcher 'sym ...) calls would register."
+  "Read FILE without evaluating it, collecting runtime symbols
+  declared by DEFINE-LAUNCHER-RUNTIME forms."
   (let ((*read-eval* nil)
 	(*package* *package*)
 	(provides '()))
@@ -47,20 +56,26 @@
       (handler-case
 	(loop
 	  (let ((form (read in)))
-	    (when (and (consp form) (eq (first form) 'in-package)
+	    ;; Track IN-PACKAGE while reading the file.
+	    (when (and (consp form)
+		       (eq (first form) 'in-package)
 		       (consp (rest form)))
 	      (let* ((name (second form))
 		     (pkg (typecase name
 			    (symbol (find-package (symbol-name name)))
 			    (string (find-package name)))))
-		(when pkg (setf *package* pkg))))
-	    (when (and (consp form) (eq (first form) 'register-launcher)
+		(when pkg
+		  (setf *package* pkg))))
+
+	    ;; Find DEFINE-LAUNCHER-RUNTIME declarations.
+	    (when (and (consp form)
+		       (symbolp (first form))
+		       (string= (symbol-name (first form))
+				"DEFINE-LAUNCHER-RUNTIME")
 		       (consp (rest form)))
-	      (let ((arg (second form)))
-		(cond ((symbolp arg) (push arg provides))
-		      ((and (consp arg) (eq (first arg) 'quote)
-			    (consp (rest arg)) (symbolp (second arg)))
-		       (push (second arg) provides)))))))
+	      (let ((name (second form)))
+		(when (symbolp name)
+		  (push name provides))))))
 	(end-of-file ())
 	(reader-error (e)
 		      (warn "Read error while scanning ~A: ~A" file e))))

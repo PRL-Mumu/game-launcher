@@ -27,10 +27,7 @@
   (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
   (format stream "EXEC: ~A~%" (launcher-exec launcher)))
 
-
-(defmethod launcher-runtime ((launcher xsystem4-launcher))
-  'xsystem4)
-
-(register-launcher
-  'xsystem4
-  #'make-xsystem4-launcher)
+(define-launcher-runtime 
+  xsystem4 
+  xsystem4-launcher
+  make-xsystem4-launcher)
