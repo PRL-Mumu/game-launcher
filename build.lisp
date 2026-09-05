@@ -6,5 +6,5 @@
 
 (sb-ext:save-lisp-and-die
  "game-launcher"
- :toplevel #'game-launcher::entry-point
+ :toplevel #'game-launcher::main
  :executable t)

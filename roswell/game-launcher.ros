@@ -1,0 +1,19 @@
+#!/usr/local/bin/ros -Q --script
+
+(ql:quickload :game-launcher)
+
+(in-package :game-launcher)
+
+(defun main ()
+  (with-launcher-session ()
+			 (let ((args (cdr sb-ext:*posix-argv*)))
+			   (if args
+			     ;; Command-line mode
+			     (let ((launcher (select-launcher (first args))))
+			       (cond
+				 (launcher
+				   (format t "launching: ~A~%" (launcher-name launcher))
+				   (launch launcher))
+				 (t (format t "No matching launcher.~%"))))
+			     ;; Interactive mode
+			     (prompt-launcher-list)))))

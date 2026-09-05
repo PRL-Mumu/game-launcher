@@ -45,7 +45,7 @@
   (let ((input (read-line)))
     (cond
       ((string-equal input "q")
-       nil)
+       (sb-ext:exit))
       (t
        (let ((n (parse-integer input :junk-allowed t)))
          (when (and n
@@ -91,13 +91,13 @@
       (t
        (display-launchers matches)
        (let ((launcher (choose-launcher matches)))
-         (when launcher
-           (launch launcher)))))))
+	 (when launcher
+	   (launch launcher)))))))
 
-(runtime-path)
 
 (defun main ()
   (in-package :game-launcher)
+  (runtime-path)
   (with-launcher-session ()
 			 (let ((args (cdr sb-ext:*posix-argv*)))
 			   (if args
@@ -112,8 +112,3 @@
 
 			     ;; Interactive mode
 			     (prompt-launcher-list)))))
-
-
-(defun entry-point ()
-  (main)
-  (sb-ext:exit))
