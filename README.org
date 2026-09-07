@@ -10,7 +10,7 @@ The project is intended to make it possible to describe game launch configuratio
 
 * Install
 
-** dependecy
+- dependency
 
 make sure to install for your system
 
@@ -29,7 +29,7 @@ after setup
 Games can be represented as launcher objects containing the information required to start them.
 #+begin_src common-lisp
   (let (launcher (make-instance 'wine-launcher
-   :name Touhou 6
+   :name "Touhou 6"
    :exec "path/to/touhou")
   (launcher-launch launcher)))
 #+end_src
@@ -83,7 +83,7 @@ Allow launchers to define environment variables and other process-level configur
 ** Launcher Import and Export
 
 Provide mechanisms for importing and exporting launcher configurations to other game-launching tools.
-Useful for integration and extention.
+Useful for integration and extension.
 
 ** Command-Line Interface
 

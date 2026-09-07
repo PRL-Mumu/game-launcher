@@ -12,7 +12,8 @@
 	    #:cl-dbi
 	    #:dbd-sqlite3
 	    #:cl-json
-	    #:dexador)
+	    #:dexador
+	    #:cl-yaml)
 
 	   :pathname "src"
 
@@ -27,5 +28,8 @@
 		     ((:file "launcher-class")
 		      (:file "unknown-launcher-class")))
 	    (:module "imports"
-		     :components ((:file "import")))
+		     :components ((:file "import")
+				  (:file "steam")
+				  (:file "lutris")
+				  (:file "desktop")))
 	    (:file "launcher")))

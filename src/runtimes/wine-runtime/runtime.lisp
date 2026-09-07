@@ -23,7 +23,7 @@
 		    :if-does-not-exist :create)))
     (sb-ext:run-program
      "wine"
-     (list (namestring exe))
+     (list (namestring exe)) ;; args not setup properly
      :directory dir
      :environment (build-environment (launcher-profile launcher))
      :search t

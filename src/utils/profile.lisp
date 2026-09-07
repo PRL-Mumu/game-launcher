@@ -7,13 +7,16 @@
 ;;   :env '(("WINEPREFIX" "PREFIX_PATH")
 ;;          ("DXVK_ASYNC" "1")))
 
+(defun valid-env-entry-p (entry)
+  (and (consp entry)
+       (= (length entry) 2)
+       (stringp (first entry))
+       (stringp (second entry))))
+
 (defun make-profile (entries)
-  (unless (every (lambda (entry)
-                   (= (length entry) 2))
-                 entries)
+  (unless (every #'valid-env-entry-p entries)
     (error "Invalid environment entry: ~A" entries))
-  (make-instance 'profile
-                 :env entries))
+  (make-instance 'profile :env entries))
 
 (defmacro env (&body entries)
   `(make-profile ',entries))

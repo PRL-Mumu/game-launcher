@@ -10,38 +10,60 @@ exec ros -Q -- $0 "$@"
 
 (in-package :game-launcher)
 
+(defun usage ()
+  (format t "usage: game-launcher NAME
+          game-launcher --usage
+	  game-launcher --list
+	  game-launcher --import (FORM)
+	  game-launcher --import form|desktop|steam-id ARG~%"))
+
+(defun read-form (string)
+  (let ((*read-eval* nil))
+    (read-from-string string)))
+
+(defun handle-import (args)
+  (let ((command (second args))
+        (value (third args)))
+    (if (null value)
+	((lambda () (format t "Error: no import argument supplied.~%")
+	   (usage)))
+        (cond
+          ((string= command "form")
+           (import-launcher-form
+             (read-form value)))
+
+          ((string= command "desktop")
+           (import-desktop-file value))
+
+          ((string= command "steam-id")
+           (import-steam-id value))
+
+          ;; default use form
+          (t
+           (import-launcher-form
+             (read-form command)))))))
+
 (defun main (&rest args)
   (with-launcher-session ()
 			 (cond
-			  ((string= (first args) "--import")
-			   (cond
-					;import form
-			    ((string= (second args) "form")
-			     (import-launcher-form
-			      (read-from-string (third args))))
-			    ((string= (second args) "desktop")
-			     (import-desktop-file (third args)))
+			   ((string= (first args) "--import")
+			    (handle-import args))
 
-			    ((string= (second args) "steam-id")
-			     (import-steam-id (third args)))
+			   ((string= (first args) "--list")
+			    (display-launchers (launcher-list)))
 
+			   ((string= (first args) "--usage")
+			    (usage))
 
-					;default use form
-			    (t (import-launcher-form
-				(read-from-string (second args))))
-			    ))
+			   (args
+			     (let ((launcher (select-launcher (first args))))
+			       (cond
+				 (launcher
+				   (format t "launching: ~A~%" (launcher-name launcher))
+				   (launch launcher))
+				 (t
+				   (format t "No matching launcher.~%")))))
 
-			  ((string= (first args) "--list")
-			   (display-launchers (launcher-list)))
-			  (args
-			   (let ((launcher (select-launcher (first args))))
-			     (cond
-			      (launcher
-			       (format t "launching: ~A~%" (launcher-name launcher))
-			       (launch launcher))
-			      (t
-			       (format t "No matching launcher.~%")))))
-
-			  (t
-			   (prompt-launcher-list)))))
+			   (t
+			     (prompt-launcher-list)))))
 ;;; vim: set ft=lisp lisp:
