@@ -14,8 +14,9 @@ exec ros -Q -- $0 "$@"
   (format t "usage: game-launcher NAME
           game-launcher --usage
 	  game-launcher --list
+	  game-launcher --delete NAME
 	  game-launcher --import (FORM)
-	  game-launcher --import form|desktop|steam-id ARG~%"))
+	  game-launcher --import form|desktop|steam-id|lutris ARG~%"))
 
 (defun read-form (string)
   (let ((*read-eval* nil))
@@ -38,6 +39,11 @@ exec ros -Q -- $0 "$@"
           ((string= command "steam-id")
            (import-steam-id value))
 
+          ((string= command "lutris")
+	   (if (string= value "all")
+	       (import-all-lutris-games)
+	       (import-lutris-game (nth 3 args))))
+
           ;; default use form
           (t
            (import-launcher-form
@@ -54,6 +60,11 @@ exec ros -Q -- $0 "$@"
 
 			   ((string= (first args) "--usage")
 			    (usage))
+
+			   ((string= (first args) "--delete")
+			    (format t "BEFORE DELETE:~% ~A ~%" *launchers*)
+			    (remove-launcher (second args))
+			    (format t "AFTER DELETE:~% ~A ~%" *launchers*))
 
 			   (args
 			     (let ((launcher (select-launcher (first args))))

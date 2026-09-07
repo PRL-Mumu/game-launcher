@@ -27,6 +27,12 @@
           when (string-equal k key)
             return (values (gethash k table)))))
 
+(defun scalar->string (v)
+  "coerce a YAML scalar to its string form as it would appear in env"
+  (cond ((eq v t) "true")
+        ((eq v nil) "false")
+        (t (princ-to-string v))))
+
 (defun env-table->alist (tbl)
   (when tbl
     (loop for k being the hash-keys of tbl

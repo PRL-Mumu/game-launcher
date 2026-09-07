@@ -7,6 +7,11 @@
 (defun find-launcher (name)
   (gethash name *launchers*))
 
+(defun remove-launcher (query)
+  (let* ((matches (fuzzy-match:fuzzy-match query (launcher-names)))
+         (choice (first matches)))
+    (when choice
+      (remhash (launcher-name (find-launcher choice)) *launchers*))))
 
 (defun launcher-list ()
   "collect and return a list of launchers from *launchers*"
