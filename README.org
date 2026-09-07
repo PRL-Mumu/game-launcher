@@ -134,15 +134,15 @@ profile once, every launcher picks it up.
 
 ** Defining a profile inline (marker syntax)
 
-Writing an inline profile followed by ==>NAME= defines a named profile
+Writing an inline profile followed by ="=>NAME"= defines a named profile
 on first load and replaces the launcher's entry with a reference:
 
 #+begin_src common-lisp
-  (EXEC :NAME "MHFZ" :PROFILE (("MHF_PASS" "mmofan")) =>MHFZ
-        :EXEC "/path/mhf-cli")
+  (EXEC :NAME "MHR" :PROFILE (("DXVK_ASYNC" "1")) =>MHR
+        :EXEC "/path/to/mhr")
 #+end_src
 
-After the next save, the form reads =:PROFILE MHFZ= and the profile is
+After the next save, the form reads =:PROFILE MHR= and the profile is
 stored in profiles.lisp. Re-marking a form updates the shared profile.
 
 * Planned Features
