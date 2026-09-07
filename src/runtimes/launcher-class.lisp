@@ -17,13 +17,17 @@
 
 (defgeneric status (launcher &optional stream))
 
+(defmethod profile-slot->form ((p profile))
+  (cond ((profile-name p) (list :profile (profile-name p)))
+        ((profile-env p)  (list :profile (profile-env p)))))
+
 (defmethod launcher->form ((launcher launcher))
   (append
-   `(,(launcher-runtime launcher)
-      :name ,(launcher-name launcher))
-   (when (profile-env (launcher-profile launcher))
-     `(:profile ,(profile-env (launcher-profile launcher))))
-   `(:exec ,(launcher-exec launcher))))
+    `(,(launcher-runtime launcher)
+       :name ,(launcher-name launcher))
+    (profile-slot->form (launcher-profile launcher))
+    (when (launcher-exec launcher)
+      `(:exec ,(launcher-exec launcher)))))
 
 (defmethod launcher-end ((launcher launcher))
   ;; Default: do nothing.
@@ -133,15 +137,19 @@
 
 (defun make-launcher (runtime &rest args)
   (load-runtime (runtime-path) runtime)
-  (let ((constructor (gethash runtime *launcher-constructors*)))
-    (if constructor
-      (progn
-	(setf (getf args :profile)
-	      (make-profile (getf args :profile)))
-	(apply constructor args))
-      (restart-case
-	(error 'unknown-runtime :runtime runtime)
-	(continue ()
-	  :report (lambda (s)
-		    (format s "Skip this launcher (~A)" runtime))
-	  nil)))))
+  (multiple-value-bind (clean-args marker) (split-profile-marker args)
+    (let ((constructor (gethash runtime *launcher-constructors*)))
+      (if constructor
+          (progn
+            (setf (getf clean-args :profile)
+                  (if marker
+                      (ensure-profile (marker->name marker)
+                                      (getf clean-args :profile))
+                      (resolve-profile (getf clean-args :profile))))
+            (apply constructor clean-args))
+          (restart-case
+              (error 'unknown-runtime :runtime runtime)
+            (continue ()
+              :report (lambda (s)
+                        (format s "Skip this launcher (~A)" runtime))
+              nil))))))

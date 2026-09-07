@@ -2,8 +2,8 @@
 
 (defclass executable-launcher (launcher)
   ((args
-    :initarg :args
-    :accessor launcher-args)))
+     :initarg :args
+     :accessor launcher-args)))
 
 (defun make-executable-launcher (&key name profile exec args)
   (let ((launcher
@@ -32,14 +32,19 @@
   (format stream "EXEC: ~A~%" (launcher-exec launcher)))
 
 
+;(defmethod launcher->form ((launcher executable-launcher))
+;  (append
+;    `(,(launcher-runtime launcher)
+;       :name ,(launcher-name launcher))
+;    (when (launcher-profile launcher)
+;      `(:profile ,(profile-spec (launcher-profile launcher))))
+;    `(:exec ,(launcher-exec launcher))
+;    (when (launcher-args launcher)
+;      `(:args ,(launcher-args launcher)))))
+
 (defmethod launcher->form ((launcher executable-launcher))
-  (append
-    `(,(launcher-runtime launcher)
-       :name ,(launcher-name launcher))
-    (when (profile-env (launcher-profile launcher))
-      `(:profile ,(profile-env (launcher-profile launcher))))
-    `(:exec ,(launcher-exec launcher))
-    (when (launcher-args launcher)
-      `(:args ,(launcher-args launcher)))))
+  (append (call-next-method)
+          (when (launcher-args launcher)
+            `(:args ,(launcher-args launcher)))))
 
 (define-launcher-runtime exec executable-launcher make-executable-launcher)
