@@ -8,4 +8,5 @@ build:
 	ros build roswell/game-launcher.ros
 
 install: build
+	[[ -e ~/.local/share/applications/game-launcher.desktop ]] || cp -f game-launcher.desktop ~/.local/share/applications
 	install -Dm755 roswell/game-launcher ~/.roswell/bin/game-launcher

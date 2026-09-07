@@ -1,0 +1,3 @@
+[submodule "subprojects/emacs-extension"]
+	path = subprojects/emacs-extension
+	url = https://github.com/PRL-Mumu/game-launcher.el

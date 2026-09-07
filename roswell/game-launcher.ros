@@ -49,7 +49,17 @@ exec ros -Q -- $0 "$@"
            (import-launcher-form
              (read-form command)))))))
 
+(defun parse-launcher-url (url)
+  (let* ((prefix "game-launcher:")
+         (prefix-length (length prefix)))
+    (when (uiop:string-prefix-p prefix url)
+      (uiop:split-string
+       (subseq url prefix-length)
+       :separator "/"))))
+
 (defun main (&rest args)
+(when (uiop:string-prefix-p "game-launcher:" (first args))
+  (setf args (parse-launcher-url (first args))))
   (with-launcher-session ()
 			 (cond
 			   ((string= (first args) "--import")

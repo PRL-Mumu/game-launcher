@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Game Launcher
+Comment=Launch games via game-launcher
+Categories=Game;
+Exec=game-launcher %U
+Icon=game-launcher
+Terminal=false
+Type=Application
+StartupNotify=true
+MimeType=x-scheme-handler/game-launcher;

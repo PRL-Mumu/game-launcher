@@ -147,7 +147,7 @@
                              :exec (scalar->string exe)
                              :args (normalize-args (yaml-get game-block "args"))
                              :profile (yaml-env->profile yaml)
-                             ;:lutris-id (lutris-game-id game)
+                             :lutris-id (lutris-game-id game)
 			     )
               (warn "skipping ~A: wine game, no exe in yaml"
                     (lutris-game-name game))))
