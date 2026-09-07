@@ -1,3 +1,4 @@
 src/store/backup
 src/store/launcher-store.lisp
 roswell/game-launcher
+.projectile

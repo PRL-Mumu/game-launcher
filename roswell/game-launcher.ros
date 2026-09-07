@@ -12,7 +12,7 @@ exec ros -Q -- $0 "$@"
 
 (defun usage ()
   (format t "usage: game-launcher NAME
-          game-launcher --usage
+          game-launcher --help
 	  game-launcher --list
 	  game-launcher --delete NAME
 	  game-launcher --import (FORM)
@@ -68,7 +68,7 @@ exec ros -Q -- $0 "$@"
 			   ((string= (first args) "--list")
 			    (display-launchers (launcher-list)))
 
-			   ((string= (first args) "--usage")
+			   ((string= (first args) "--help")
 			    (usage))
 
 			   ((string= (first args) "--delete")
