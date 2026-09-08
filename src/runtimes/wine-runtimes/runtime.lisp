@@ -36,17 +36,6 @@
 	:error log
 	:wait nil))))
 
-;(defmethod launcher->form ((launcher wine-launcher))
-;  (append
-;    `(,(launcher-runtime launcher)
-;       :name ,(launcher-name launcher))
-;    (when (launcher-profile launcher)
-;      `(:profile ,(profile-spec (launcher-profile launcher))))
-;    `(:exec ,(launcher-exec launcher))
-;    (when (launcher-args launcher)
-;      `(:args ,(launcher-args launcher)))
-;    (when (launcher-lutris-id launcher)
-;      `(:lutris-id ,(launcher-lutris-id launcher)))))
 
 (defmethod launcher->form ((launcher wine-launcher))
   (append (call-next-method)

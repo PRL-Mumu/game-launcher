@@ -1,6 +1,6 @@
 (defsystem #:game-launcher
 	   :name "game-launcher"
-	   :version "0.0.1"
+	   :version "0.2.0"
 	   :description "Simple game launcher written in common lisp"
 	   :author "Rush Empire"
 	   :license "GPLv3"
