@@ -9,11 +9,11 @@
 	   (#:uiop
 	    #:fuzzy-match
 	    #:bordeaux-threads
+	    #+linux #:cl-yaml
 	    #+linux #:cl-dbi
 	    #+linux #:dbd-sqlite3
 	    #:cl-json
-	    #:dexador
-	    #:cl-yaml)
+	    #:dexador)
 
 	   :pathname "src"
 
