@@ -9,8 +9,8 @@
 	   (#:uiop
 	    #:fuzzy-match
 	    #:bordeaux-threads
-	    #:cl-dbi
-	    #:dbd-sqlite3
+	    #+linux #:cl-dbi
+	    #+linux #:dbd-sqlite3
 	    #:cl-json
 	    #:dexador
 	    #:cl-yaml)
@@ -30,6 +30,6 @@
 	    (:module "imports"
 		     :components ((:file "import")
 				  (:file "steam")
-				  (:file "lutris")
+				  #+linux (:file "lutris")
 				  (:file "desktop")))
 	    (:file "launcher")))

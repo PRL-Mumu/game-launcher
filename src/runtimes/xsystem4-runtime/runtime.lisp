@@ -21,12 +21,6 @@
       :output *standard-output*
       :wait nil))
 
-(defmethod status ((launcher xsystem4-launcher)
-		   &optional (stream *standard-output*))
-  (format stream "NAME: ~A~%" (launcher-name launcher))
-  (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "EXEC: ~A~%" (launcher-exec launcher)))
-
 (define-launcher-runtime 
   xsystem4 
   xsystem4-launcher
