@@ -16,7 +16,7 @@ exec ros -Q -- $0 "$@"
 	  game-launcher --list
 	  game-launcher --delete NAME
 	  game-launcher --import (FORM)
-	  game-launcher --import form|desktop|steam-id|lutris ARG~%"))
+	  game-launcher --import form|desktop|steam-id|steam-local|lutris ARG~%"))
 
 (defun read-form (string)
   (let ((*read-eval* nil))
@@ -38,6 +38,11 @@ exec ros -Q -- $0 "$@"
 
           ((string= command "steam-id")
            (import-steam-id value))
+
+	  ((string= command "steam-local")
+	   (if (string= value "all")
+	     (steam-local-import-all)
+	     (format t "unimplemented..~%")))
 
           ((string= command "lutris")
 	   (if (string= value "all")

@@ -1,5 +1,5 @@
 (defpackage :game-launcher
-  (:use :cl )
+  (:use :cl :arrow-macros)
   (:import-from :uiop
 		#:xdg-config-home
 		#:subdirectories
@@ -16,4 +16,3 @@
    #:run-launcher-thread
    #:launch
    #:launcher-name))
-

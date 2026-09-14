@@ -8,6 +8,7 @@
 	   :depends-on
 	   (#:uiop
 	    #:fuzzy-match
+	    #:arrow-macros
 	    #:bordeaux-threads
 	    #+linux #:cl-yaml
 	    #+linux #:cl-dbi
@@ -30,6 +31,7 @@
 	    (:module "imports"
 		     :components ((:file "import")
 				  (:file "steam")
+				  (:file "steam-acf")
 				  #+linux (:file "lutris")
 				  (:file "desktop")))
 	    (:file "launcher")))
