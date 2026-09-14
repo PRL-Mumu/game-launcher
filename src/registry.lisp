@@ -33,6 +33,17 @@
 			    :if-does-not-exist :create)
       (pprint (append launchers unknown-launchers) stream))))
 
+
+(defun remove-launcher (name)
+  ;; remove launcher from *launchers*
+  (unless (remhash name *launchers*)
+    (remhash name *unknown-launchers*))
+  (write-launchers-to-file (store-path)))
+
+(defun force-remove-launcher (name)
+  (remove-launcher name)
+  (write-launchers-to-file (store-path)))
+
 (defun store-path ();; TODO: add configuration
   (or
     (let ((user (merge-pathnames
@@ -78,7 +89,7 @@
      (read-profiles-from-file (env-profile-config-path))
      (read-launchers-from-file (store-path))
      (unwind-protect
-          (progn ,@body)
+       (progn ,@body)
        (write-launchers-to-file (store-path))
        (write-profiles-to-file (env-profile-config-path)))))
 
