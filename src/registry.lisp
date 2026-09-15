@@ -17,9 +17,11 @@
   (setf (gethash (launcher-name launcher) *launchers*)
 	launcher))
 
+
 (defun register-unknown-launcher (launcher)
   (setf (gethash (form-name launcher) *unknown-launchers*)
 	launcher))
+
 
 (defun write-launchers-to-file (filename)
   "Writes each launche form in the list to the file on its own line."
@@ -94,6 +96,9 @@
        (write-profiles-to-file (env-profile-config-path)))))
 
 (defun initialize-launcher ()
-  (runtime-path)
   (read-profiles-from-file (env-profile-config-path))
   (read-launchers-from-file (store-path)))
+
+(defun uninitialize-launcher ()
+  (clrhash *launchers*)
+  (clrhash *unknown-launchers*))

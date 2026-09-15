@@ -80,6 +80,13 @@
       (when launcher
 	(run-launcher-thread launcher)))))
 
+(defun prompt-launcher-remove-list ()
+  (let ((launchers (launcher-list)))
+    (display-launchers launchers)
+    (let ((name (launcher-name (choose-launcher launchers))))
+      (when name
+	(remove-launcher name)))))
+
 (defun prompt-launcher-search ()
   (format t "~&Search: ")
   (finish-output)

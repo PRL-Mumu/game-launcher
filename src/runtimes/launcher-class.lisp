@@ -126,6 +126,10 @@
     (when file (remhash file *loaded-runtime-files*)))
   (load-runtime dir runtime-symbol))
 
+(defun rush-debug-load-runtimes ()
+  (loop :for i :in (known-runtimes (runtime-path))
+	:do (reload-runtime (runtime-path) i)))
+
 (defun load-runtimes (dir)
   (index-runtimes dir))
 

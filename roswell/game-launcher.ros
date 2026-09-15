@@ -14,9 +14,9 @@ exec ros -Q -- $0 "$@"
   (format t "usage: game-launcher NAME
           game-launcher --help
 	  game-launcher --list
-	  game-launcher --delete NAME
+	  game-launcher --remove NAME
 	  game-launcher --import (FORM)
-	  game-launcher --import form|desktop|steam-id|steam-local|lutris ARG~%"))
+	  game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%"))
 
 (defun read-form (string)
   (let ((*read-eval* nil))
@@ -63,6 +63,7 @@ exec ros -Q -- $0 "$@"
        :separator "/"))))
 
 (defun main (&rest args)
+  (ignore-errors
 (when (uiop:string-prefix-p "game-launcher:" (first args))
   (setf args (parse-launcher-url (first args))))
   (with-launcher-session ()
@@ -76,10 +77,11 @@ exec ros -Q -- $0 "$@"
 			   ((string= (first args) "--help")
 			    (usage))
 
-			   ((string= (first args) "--delete")
-			    (format t "BEFORE DELETE:~% ~A ~%" *launchers*)
-			    (remove-launcher (second args))
-			    (format t "AFTER DELETE:~% ~A ~%" *launchers*))
+			   ((string= (first args) "--remove")
+			    (remove-launcher (second args)))
+
+			   ((string= (first args) "--remove-list")
+			    (prompt-launcher-remove-list))
 
 			   (args
 			     (let ((launcher (select-launcher (first args))))
@@ -91,5 +93,5 @@ exec ros -Q -- $0 "$@"
 				   (format t "No matching launcher.~%")))))
 
 			   (t
-			     (prompt-launcher-list)))))
+			     (prompt-launcher-list))))))
 ;;; vim: set ft=lisp lisp:

@@ -12,7 +12,9 @@
    #:launcher-names
    #:select-launcher
    #:initialize-launcher
+   #:uninitialize-launcher
    #:find-launcher
    #:run-launcher-thread
    #:launch
-   #:launcher-name))
+   #:launcher-name
+   #:rush-debug-load-runtimes))
