@@ -91,13 +91,13 @@
 			:exec (format nil "steam://rungameid/~D" steam-id))))))
 
 (defun steam-local-import-all ()
-  (let ((libraryfoldersvdf (parse-acf #p "~/.local/share/Steam/steamapps/libraryfolders.vdf"))
+  (let* ((libraryfoldersvdf (parse-acf (uiop:xdg-data-home "Steam/steamapps/libraryfolders.vdf")))
 	(path (merge-pathnames "Steam/steamapps"
 			       (acf-ref
-				 libraryfoldersvdf
-				 "libraryfolders" "0" "path"))))
+				libraryfoldersvdf
+				"libraryfolders" "0" "path"))))
     (loop for steam-id in (mapcar #'car
 				  (acf-ref
-				    libraryfoldersvdf
-				    "libraryfolders" "0" "apps"))
+				   libraryfoldersvdf
+				   "libraryfolders" "0" "apps"))
 	  do (steam-local-import steam-id path))))

@@ -17,11 +17,9 @@
   (setf (gethash (launcher-name launcher) *launchers*)
 	launcher))
 
-
 (defun register-unknown-launcher (launcher)
   (setf (gethash (form-name launcher) *unknown-launchers*)
 	launcher))
-
 
 (defun write-launchers-to-file (filename)
   "Writes each launche form in the list to the file on its own line."
@@ -35,9 +33,7 @@
 			    :if-does-not-exist :create)
       (pprint (append launchers unknown-launchers) stream))))
 
-
 (defun remove-launcher (name)
-  ;; remove launcher from *launchers*
   (unless (remhash name *launchers*)
     (remhash name *unknown-launchers*))
   (write-launchers-to-file (store-path)))
@@ -47,6 +43,7 @@
   (write-launchers-to-file (store-path)))
 
 (defun store-path ();; TODO: add configuration
+  "returns the expected store path"
   (or
     (let ((user (merge-pathnames
 		  "game-launcher/launcher-store.lisp"
@@ -75,6 +72,7 @@
     (with-open-file (stream filename :direction :input)
       (let ((forms (read stream nil '())))   ; don't die on an empty store file
 	(dolist (form forms)
+
 	  (handler-case
 	    (register-launcher-instance
 	      (apply #'make-launcher form))
@@ -83,8 +81,8 @@
 			       (save-unknown-form form)))
 	    (error (e)
 		   (warn "Preserving malformed launcher ~S: ~A" form e)
-		   (register-unknown-launcher (save-unknown-form form)))))))))
-
+		   (register-unknown-launcher (save-unknown-form form)))));; folded
+	))))
 
 (defmacro with-launcher-session (() &body body)
   `(progn

@@ -10,6 +10,8 @@
   (:export
    #:main
    #:launcher-names
+   #:list-launchers
+   #:list-unknown-launchers
    #:select-launcher
    #:initialize-launcher
    #:uninitialize-launcher

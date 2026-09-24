@@ -13,6 +13,7 @@
 	    #+linux #:cl-yaml
 	    #+linux #:cl-dbi
 	    #+linux #:dbd-sqlite3
+	    #:cl-hooks
 	    #:cl-json
 	    #:dexador)
 

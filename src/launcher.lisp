@@ -18,13 +18,16 @@
   (loop for launcher being the hash-values of *launchers*
         collect launcher))
 
+(defun unknown-launcher-list ()
+  (loop for launcher being the hash-values of *unknown-launchers*
+	collect launcher))
 
 (defun select-launcher (query)
+  "matches and returns closest launcher name"
   (let* ((matches (fuzzy-match:fuzzy-match query (launcher-names)))
 	 (choice (first matches)))
     (when choice
       (find-launcher choice))))
-
 
 (defun search-launcher-list (query)
   (fuzzy-match:fuzzy-match
@@ -44,13 +47,17 @@
   "return list of launchers numerical"
   (display-launchers (launcher-list)))
 
+(defun list-unknown-launchers ()
+  "return list of unknown launchers numerical"
+  (display-launchers (unknown-launcher-list)))
+
 (defun choose-launcher (launchers)
   (format t "~&Choice (q to quit): ")
   (finish-output)
   (let ((input (read-line)))
     (cond
       ((string-equal input "q")
-       (sb-ext:exit))
+       nil)
       (t
        (let ((n (parse-integer input :junk-allowed t)))
          (when (and n
@@ -81,6 +88,7 @@
 	(run-launcher-thread launcher)))))
 
 (defun prompt-launcher-remove-list ()
+  "display launcher list and then remove chosen launcher from *launchers*"
   (let ((launchers (launcher-list)))
     (display-launchers launchers)
     (let ((name (launcher-name (choose-launcher launchers))))
