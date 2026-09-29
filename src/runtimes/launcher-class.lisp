@@ -11,6 +11,13 @@
     :initarg :exec
     :accessor launcher-exec)))
 
+(defgeneric launcherp (obj))
+(defmethod launcherp ((o launcher))
+"Return T if o is a 'launcher' instance."
+  t)
+(defmethod launcherp ((o t))
+  nil)
+
 (defgeneric launcher-runtime (launcher))
 
 (defgeneric launch (launcher))
