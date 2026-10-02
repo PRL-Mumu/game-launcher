@@ -1,5 +1,8 @@
 
-(in-package :game-launcher)
+
+(in-package :game-launcher.steam)
+
+(use-package :game-launcher)
 
 (defun steam-app-id-p (string)
   "Return T if STRING contains only decimal digits."
@@ -101,3 +104,11 @@
 				   libraryfoldersvdf
 				   "libraryfolders" "0" "apps"))
 	  do (steam-local-import steam-id path))))
+
+(game-launcher::export-runtime-symbol-into-core
+ 'steam-app-id-p
+ 'steam-app-id-from-url
+ 'steam-app-name
+ 'import-steam-id
+ 'steam-local-import
+ 'steam-local-import-all)

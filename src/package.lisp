@@ -1,5 +1,5 @@
 (defpackage :game-launcher
-  (:use :cl :arrow-macros)
+  (:use :cl)
   (:import-from :uiop
 		#:xdg-config-home
 		#:subdirectories
@@ -8,15 +8,21 @@
 		#:when-let
 		#:if-let)
   (:export
-   #:main
-   #:launcher-names
-   #:list-launchers
-   #:list-unknown-launchers
-   #:select-launcher
-   #:initialize-launcher
-   #:uninitialize-launcher
-   #:find-launcher
-   #:run-launcher-thread
-   #:launch
-   #:launcher-name
-   #:rush-debug-load-runtimes))
+    #:assoc-path
+    #:main
+    #:make-launcher
+    #:launcher-names
+    #:list-launchers
+    #:list-unknown-launchers
+    #:register-launcher-instance
+    #:select-launcher
+    #:initialize-launcher
+    #:uninitialize-launcher
+    #:find-launcher
+    #:run-launcher-thread
+    #:launch
+    #:launcher-name
+    #:load-runtime
+    #:runtime-path
+    #:export-runtime-symbol-into-core
+    #:rush-debug-load-runtimes))

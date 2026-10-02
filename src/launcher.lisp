@@ -114,7 +114,6 @@
 	 (when launcher
 	   (launch launcher)))))))
 
-
 (defun main ()
   (in-package :game-launcher)
   (runtime-path)

@@ -9,7 +9,17 @@
 
 ;;;; Conditions ---------------------------------------------------------------
 
-(in-package :game-launcher)
+(defpackage :game-launcher.steam
+  (:use :cl :game-launcher)
+  (:export #:slurp
+	   #:parse-acf
+	   #:acf-get
+	   #:acf-ref
+	   #:acf->hash
+	   #:acf->escape
+	   #:write-acf))
+
+(in-package #:game-launcher.steam)
 
 (define-condition acf-parse-error (error)
   ((message :initarg :message :reader acf-parse-error-message)

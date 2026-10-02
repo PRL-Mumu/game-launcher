@@ -5,7 +5,8 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:game-launcher) :silent t)
+  #+quicklisp(ql:quickload '(:game-launcher :cl-json :dexador) :silent t)
+  #+(and quicklisp unix)(ql:quickload '(:cl-yaml :cl-dbi :dbd-sqlite3) :silent t)
   )
 
 (in-package :game-launcher)
@@ -17,6 +18,17 @@ exec ros -Q -- $0 "$@"
 	  game-launcher --remove NAME
 	  game-launcher --import (FORM)
 	  game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%"))
+
+(defun backend-fn (name)
+  "Return the function named NAME in :game-launcher, or NIL if not present."
+  (let ((sym (find-symbol (string-upcase name) :game-launcher)))
+    (and sym (fboundp sym) (symbol-function sym))))
+
+(defun call-backend (name &rest args)
+  (let ((fn (backend-fn name)))
+    (unless fn
+      (error "Backend function ~A is not available in this build of game-launcher." name))
+    (apply fn args)))
 
 (defun read-form (string)
   (let ((*read-eval* nil))
@@ -34,25 +46,31 @@ exec ros -Q -- $0 "$@"
              (read-form value)))
 
           ((string= command "desktop")
-           (import-desktop-file value))
+	   (when (call-backend "load-runtime" (runtime-path) 'desktop)
+           (call-backend "import-desktop-file" value)))
 
-          ((string= command "steam-id")
-           (import-steam-id value))
+	  ((string= command "steam-id")
+	   (when (call-backend "load-runtime" (runtime-path) 'steam)
+	     (call-backend "import-steam-id" value)))
 
 	  ((string= command "steam-local")
-	   (if (string= value "all")
-	     (steam-local-import-all)
-	     (format t "unimplemented..~%")))
+	   (when (call-backend "load-runtime" (runtime-path) 'steam)
+	     (if (string= value "all")
+		 (call-backend "steam-local-import-all")
+		 (format t "unimplemented..~%"))))
 
-          ((string= command "lutris")
-	   (if (string= value "all")
-	       (import-all-lutris-games)
-	       (import-lutris-game (nth 3 args))))
+	  ((string= command "lutris")
+	   (if (uiop:os-windows-p)
+	       "lutris import is not supported for windows currently"
+	       (when (call-backend "load-runtime" (runtime-path) 'lutris)
+		 (if (string= value "all")
+		     (call-backend "import-all-lutris-games")
+		     (call-backend "import-lutris-game" (nth 3 args))))))
 
           ;; default use form
           (t
            (import-launcher-form
-             (read-form command)))))))
+	    (read-form command)))))))
 
 (defun parse-launcher-url (url)
   (let* ((prefix "game-launcher:")
@@ -64,34 +82,34 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest args)
   (ignore-errors
-(when (uiop:string-prefix-p "game-launcher:" (first args))
-  (setf args (parse-launcher-url (first args))))
-  (with-launcher-session ()
-			 (cond
-			   ((string= (first args) "--import")
-			    (handle-import args))
+   (when (uiop:string-prefix-p "game-launcher:" (first args))
+     (setf args (parse-launcher-url (first args))))
+   (with-launcher-session ()
+     (cond
+       ((string= (first args) "--import")
+	(handle-import args))
 
-			   ((string= (first args) "--list")
-			    (display-launchers (launcher-list)))
+       ((string= (first args) "--list")
+	(display-launchers (launcher-list)))
 
-			   ((string= (first args) "--help")
-			    (usage))
+       ((string= (first args) "--help")
+	(usage))
 
-			   ((string= (first args) "--remove")
-			    (remove-launcher (second args)))
+       ((string= (first args) "--remove")
+	(remove-launcher (second args)))
 
-			   ((string= (first args) "--remove-list")
-			    (prompt-launcher-remove-list))
+       ((string= (first args) "--remove-list")
+	(prompt-launcher-remove-list))
 
-			   (args
-			     (let ((launcher (select-launcher (first args))))
-			       (cond
-				 (launcher
-				   (format t "launching: ~A~%" (launcher-name launcher))
-				   (launch launcher))
-				 (t
-				   (format t "No matching launcher.~%")))))
+       (args
+	(let ((launcher (select-launcher (first args))))
+	  (cond
+	    (launcher
+	     (format t "launching: ~A~%" (launcher-name launcher))
+	     (launch launcher))
+	    (t
+	     (format t "No matching launcher.~%")))))
 
-			   (t
-			     (prompt-launcher-list))))))
+       (t
+	(prompt-launcher-list))))))
 ;;; vim: set ft=lisp lisp:

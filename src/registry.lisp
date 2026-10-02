@@ -22,7 +22,7 @@
 	launcher))
 
 (defun write-launchers-to-file (filename)
-  "Writes each launche form in the list to the file on its own line."
+  "Writes each launcher form in the list to the file on its own line."
   (let ((launchers  (loop for key being the hash-values of *launchers*
 			  collect (launcher->form key)))
 	(unknown-launchers (loop for key being the hash-values of *unknown-launchers*
@@ -68,8 +68,8 @@
 
 (defun save-unknown-form (form)
   (make-instance 'unknown-launcher
-		 :name (make-form-name form)
-		 :data form))
+                 :name (make-form-name form)
+                 :data form))
 
 (defun read-launchers-from-file (filename)
   (let ((*package* (find-package :game-launcher)))

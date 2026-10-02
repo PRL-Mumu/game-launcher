@@ -24,9 +24,15 @@
 
 (defgeneric status (launcher &optional stream))
 
+(defgeneric profile-slot->form (p)
+  (:documentation "Convert a profile slot to a form representation. Takes a profile object and returns a list containing the keyword :profile and either the name or environment of the profile."))
+
 (defmethod profile-slot->form ((p profile))
   (cond ((profile-name p) (list :profile (profile-name p)))
         ((profile-env p)  (list :profile (profile-env p)))))
+
+(defgeneric launcher->form (launcher)
+  (:documentation "Convert a launcher object into its form representation."))
 
 (defmethod launcher->form ((launcher launcher))
   (append
@@ -37,7 +43,8 @@
       `(:exec ,(launcher-exec launcher)))))
 
 (defmethod launcher-end ((launcher launcher))
-  ;; Default: do nothing.
+  "Terminate the launcher. Default implementation does nothing.
+This method can be overridden by subclasses to perform cleanup."
   nil)
 
 (defvar *runtime-index* (make-hash-table :test 'eq))
@@ -49,12 +56,21 @@
 		   (asdf:system-source-directory :game-launcher)))
 
 
-(defmacro define-launcher-runtime (name class constructor)
-  "macro to quickly register your runtime"
-  `(progn
-     (defmethod launcher-runtime ((launcher ,class))
-       ',name)
-     (register-launcher ',name #',constructor)))
+(defmacro define-launcher-runtime (name class &optional constructor)
+  "Register a launcher runtime. If CONSTRUCTOR is omitted, generate
+   a MAKE-<NAME>-LAUNCHER function that forwards to MAKE-LAUNCHER."
+  (if constructor
+      `(progn
+         (defmethod launcher-runtime ((launcher ,class))
+           ',name)
+         (register-launcher ',name #',constructor))
+      (let ((ctor (intern (format nil "MAKE-~A-LAUNCHER" name))))
+        `(progn
+           (defmethod launcher-runtime ((launcher ,class))
+             ',name)
+           (defun ,ctor (&rest args)
+             (apply #'make-launcher :runtime ',name args))
+           (register-launcher ',name #',ctor)))))
 
 
 (defun runtime-file-provides (file)
@@ -134,8 +150,9 @@
   (load-runtime dir runtime-symbol))
 
 (defun rush-debug-load-runtimes ()
+  ;; Reload all known runtimes for debugging purposes.
   (loop :for i :in (known-runtimes (runtime-path))
-	:do (reload-runtime (runtime-path) i)))
+        :do (reload-runtime (runtime-path) i)))
 
 (defun load-runtimes (dir)
   (index-runtimes dir))
@@ -145,6 +162,16 @@
   (:report (lambda (c s)
 	     (format s "Unknown launcher runtime: ~A"
 		     (unknown-runtime-name c)))))
+
+(defun export-runtime-symbol-into-core (&rest symbols)
+  "Make SYMBOLS external in :game-launcher, importing them if needed."
+  (dolist (sym symbols)
+    (import sym :game-launcher)
+    (export sym :game-launcher)))
+
+(defmacro when-packages ((&rest packages) &body body)
+  `(when (every #'find-package (list ,@packages))
+     ,@body))
 
 (defun make-launcher (runtime &rest args)
   (load-runtime (runtime-path) runtime)

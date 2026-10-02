@@ -1,6 +1,6 @@
 (defsystem #:game-launcher
 	   :name "game-launcher"
-	   :version "0.2.0"
+	   :version "0.2.2"
 	   :description "Simple game launcher written in common lisp"
 	   :author "Rush Empire"
 	   :license "GPLv3"
@@ -8,15 +8,9 @@
 	   :depends-on
 	   (#:uiop
 	    #:fuzzy-match
-	    #:arrow-macros
 	    #:bordeaux-threads
-	    #+linux #:cl-yaml
-	    #+linux #:cl-dbi
-	    #+linux #:dbd-sqlite3
-	    #:cl-hooks
-	    #:cl-json
-	    #:dexador)
-
+	    #:cl-hooks ;; unused
+	    )
 	   :pathname "src"
 
 	   :components
@@ -30,9 +24,5 @@
 		     ((:file "launcher-class")
 		      (:file "unknown-launcher-class")))
 	    (:module "imports"
-		     :components ((:file "import")
-				  (:file "steam")
-				  (:file "steam-acf")
-				  #+linux (:file "lutris")
-				  (:file "desktop")))
+		     :components ((:file "import")))
 	    (:file "launcher")))

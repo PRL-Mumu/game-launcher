@@ -1,5 +1,6 @@
 (in-package #:game-launcher)
 
+
 (defclass steam-launcher (launcher)
   ())
 
@@ -26,7 +27,16 @@
   (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
   (format stream "EXEC: ~A~%" (launcher-exec launcher)))
 
-(define-launcher-runtime 
-  steam 
-  steam-launcher 
+
+(define-launcher-runtime
+    steam
+  steam-launcher
   make-steam-launcher)
+
+;; extras
+;; NOTE: NEEDS Dexador and cl-lisp packages
+(when-packages (:dexador :cl-json)
+  (let ((here (uiop:pathname-directory-pathname *load-truename*)))
+    (load (merge-pathnames "steam-acf.lisp" here))
+    (load (merge-pathnames "steam.lisp" here))))
+;; ;; ;;
