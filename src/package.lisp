@@ -24,5 +24,7 @@
     #:launcher-name
     #:load-runtime
     #:runtime-path
+    #:store-path
     #:export-runtime-symbol-into-core
+    #:known-runtimes
     #:rush-debug-load-runtimes))

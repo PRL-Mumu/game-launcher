@@ -84,7 +84,7 @@
 	      (register-unknown-launcher
 	       (save-unknown-form form)))
 	    (error (e)
-	      (warn "Preserving malformed launcher ~S: ~A" form e)
+	      (warn "Preserving malformed launcher ~%~S~%:~A~%" form e)
 	      (register-unknown-launcher (save-unknown-form form)))));; folded
 	))))
 
