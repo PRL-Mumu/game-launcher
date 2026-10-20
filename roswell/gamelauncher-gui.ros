@@ -11,7 +11,7 @@ exec ros -Q -- $0 "$@"
 
 (in-package :ltk)
 (defun main ()
-  (defvar plusheight 30)
+  (let ((plusheight 30)) 
   (game-launcher:initialize-launcher)
   (with-ltk ()
 	    (let ((launchers (game-launcher::launcher-list))
@@ -48,5 +48,5 @@ exec ros -Q -- $0 "$@"
 		  )))
 	    (let ((w 580) (h plusheight))
 	      (set-geometry *tk* w h (- (/ 1920 2) (/ w 2)) (- (/ 1080 2) (/ h 2))))
-	    ))
+	    )))
 ;;; vim: set ft=lisp lisp:

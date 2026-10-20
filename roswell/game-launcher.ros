@@ -9,11 +9,7 @@ exec ros -Q -- $0 "$@"
   #+unix(ql:quickload '(:game-launcher :cl-json :dexador :cl-yaml :cl-dbi :dbd-sqlite3) :silent t)
   )
 
-(defpackage :ros.script.game-launcher.4001469950
-  (:use :cl))
-(in-package :ros.script.game-launcher.4001469950)
-
-;(in-package :game-launcher)
+(in-package :game-launcher)
 
 (defun usage (&optional case)
   (if (null case)
@@ -22,7 +18,6 @@ exec ros -Q -- $0 "$@"
 	    game-launcher --help {lutris|desktop|steam-local}
 	    game-launcher --list
 	    game-launcher --remove NAME
-	    game-launcher --import (FORM)
 	    game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%")
 	    (cond
 	      ((string= case "lutris")

@@ -18,18 +18,18 @@
 (defun make-browser-launcher (&key name profile exec url args lutris-id)
   "Create a launcher that starts a browser (EXEC) on URL with optional ARGS."
   (make-instance 'browser-launcher
-                 :name      name
-                 :profile   profile
-                 :exec      exec          ; e.g. \"/usr/bin/firefox\"
-                 :url       url
-                 :args      args
+                 :name name
+                 :profile profile
+                 :url (or exec url)
+		 :exec nil
+                 :args args
                  :lutris-id lutris-id))
 
 ;; ----------------------------------------------------------------------
 ;;  Launch – start the browser process
 ;; ----------------------------------------------------------------------
 (defmethod launch ((launcher browser-launcher))
-  (let* ((exe   (pathname (launcher-exec launcher)))
+  (let* ((exe   "xdg-open")
          (url   (launcher-url launcher))
          (full-args (append (launcher-args launcher) (list url))))
     (with-open-file (log "/tmp/game-launcher.browser.log"
@@ -58,19 +58,6 @@
             `(:lutris-id ,(launcher-lutris-id launcher)))))
 
 ;; ----------------------------------------------------------------------
-;;  Kill – ask the browser to exit (best‑effort)
-;; ----------------------------------------------------------------------
-(defmethod kill ((launcher browser-launcher))
-  ;; Most browsers understand “-remote quit” or “--new-instance --no-remote”.
-  ;; We keep it generic: try to kill the process tree of the launched exe.
-  (sb-ext:run-program
-    "pkill"
-    (list "-f" (launcher-exec launcher))
-    :search t
-    :output *standard-output*
-    :wait t))
-
-;; ----------------------------------------------------------------------
 ;;  End of launcher lifecycle
 ;; ----------------------------------------------------------------------
 (defmethod launcher-end ((launcher browser-launcher))
@@ -85,7 +72,6 @@
                    &optional (stream *standard-output*))
   (format stream "NAME: ~A~%" (launcher-name launcher))
   (format stream "ENV : ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "EXEC: ~A~%" (launcher-exec launcher))
   (format stream "URL : ~A~%" (launcher-url launcher))
   (format stream "ARGS: ~A~%" (launcher-args launcher)))
 

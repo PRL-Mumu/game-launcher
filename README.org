@@ -11,11 +11,11 @@ The project is intended to make it possible to describe game launch configuratio
 * Usage
 
 #+begin_src bash
-game-launcher                 # interactive picker
-game-launcher NAME            # launch a game
-game-launcher --list          # list all launchers
-game-launcher --import (FORM) # import a launcher from a form
-game-launcher --import lutris # import from a Lutris install
+game-launcher NAME
+game-launcher --help {lutris|desktop|steam-local}
+game-launcher --list
+game-launcher --remove NAME
+game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%")
 #+end_src
 
 * Install
@@ -29,7 +29,13 @@ Rosswell https://github.com/roswell/roswell
 after setup
 
 #+begin_src bash
-ros install PRL-Mumu/game-launcher
+  ros install PRL-Mumu/game-launcher
+
+  # additionally, if you cloned the repo
+
+  cd /path/to/repo
+
+  make install # build and install the cli binary
 #+end_src
 
 * Current Implementation Features
@@ -40,7 +46,7 @@ Games can be represented as launcher objects containing the information required
 #+begin_src common-lisp
 (let ((launcher (make-instance 'wine-launcher
 		 :name "Touhou 6"
-		 :exec "path/to/touhou")))
+		 :exec "/path/to/touhou")))
  (launch launcher))
 #+end_src
 
@@ -48,8 +54,58 @@ Games can be represented as launcher objects containing the information required
 
 Launchers can be associated with different runtime implementations, allowing the same framework to handle games that require different ways of being executed.
 
-*** TODO: simplify implementation for new runtimes
-the current setup requires some boilerplate
+runtimes need a launcher subclass and a identifier symbol to be registered, additionally a constructor can be passed
+#+begin_src common-lisp
+  (defclass lutris-launcher (launcher) ())
+
+  (define-launcher-runtime
+    lutris                ; symbol
+    lutris-launcher       ; class
+    make-lutris-launcher  ; constructor (optional)
+    )
+#+end_src
+
+*** custom phase support
+
+launcher pipeline system now lets you split the launch steps into phases
+
+the phases run in order in sync or async (name . function)
+
+this lets the store definition be read into the pipeline for phase functions
+
+#+begin_src common-lisp
+
+  (defparameter *executable-launch-pipeline*
+    '((pre  . nil)
+      (exec . executable-exec-phase)
+      (post . nil)
+      (teardown . teardown-processes)))
+
+  ;; to run the pipeline with launch we can
+
+  (defmethod launch ((l executable-launcher)) ;; method specific to executable launcher
+  (run-pipeline
+   (apply-phase-clauses *executable-launch-pipeline* ;; defined phases for the runtime
+                        (launcher-phases l)) ;; additional phases taken from store
+   ;; the phase clauses include
+   ;; (add-before <name> fn)
+   ;; (add-after <name> fn)
+   ;; (replace <name> fn)
+   ;; (delete <name>)
+
+   (list :
+         launcher l
+         :exec     (launcher-exec l)
+         :args     (or (launcher-args l) '())
+         :env      (build-environment (launcher-profile l))
+         :process  nil
+  	 :processes nil) ;; ctx to pass around
+   ))
+  ; for the fn definition run-command and run-async-command functions are provided
+
+#+end_src
+
+the system allows for running games that require a series of events, such as servers running or loading a file, and can be expanded with scripts
 
 ** Form-Based Serialization
 
@@ -70,6 +126,8 @@ Unknown forms are stored as raw serialized data and can be written back to the l
 
 The launcher and runtime systems are designed around Common Lisp's object system, making it possible to add new launcher and runtime types without changing the core serialization mechanism.
 
+keeping the core dependency layer small has made it easier to write extension scripts and frontend for them. api, rpc, ffi etc.
+
 ** Emacs Integration
 
 Related project is an emacs extension that interfaces with this project
@@ -79,29 +137,51 @@ https://github.com/PRL-Mumu/game-launcher.el
 
 ** Launcher Import and Export
 
-Provide mechanisms for importing and exporting launcher configurations to other game-launching tools.
-Useful for integration and extension.
+runtime import systems can be added as extensions to the core
 
-*** desktop files
+eg.
+*** Desktop files
+
 desktop files are parsed into exec runtime launchers
+
+the runtime.lisp file runs this check to load the extenstion with functionality to import .desktop files into a store definition
+#+begin_src common-lisp
+(when (uiop:os-unix-p)
+  (let ((here (uiop:pathname-directory-pathname *load-truename*)))
+    (load (merge-pathnames "desktop.lisp" here))))
+#+end_src
 
 
 *** lutris
-lutris launchers can be imported via
+
+#+begin_src common-lisp
+(when-packages (:cl-dbi :cl-yaml :sqlite) ;; for imports the frontend must load these packages
+  (let ((here (uiop:pathname-directory-pathname *load-truename*)))
+    (load (merge-pathnames "lutris.lisp" here))))
+#+end_src
+
+in the cli lutris launchers can be imported via
 
 #+begin_src sh
 
+  # extenstion is enabled for unix systems only in the cli
   game-launcher --import lutris "<name>"
   # or
   game-launcher --import lutris all
 
 #+end_src
 
-currently wine runtime is supported to import
-
 *** steam
 
-provide a steam id or direct store link to add the launcher as steam runtime launchers
+#+begin_src common-lisp
+;; NOTE: NEEDS Dexador and cl-lisp packages
+(when-packages (:dexador :cl-json)
+  (let ((here (uiop:pathname-directory-pathname *load-truename*)))
+    (load (merge-pathnames "steam-acf.lisp" here))
+    (load (merge-pathnames "steam.lisp" here))))
+#+end_src
+
+steam importer parses and contacts steam api for names to steamid
 
 * Store File Format
 
@@ -110,15 +190,15 @@ forms, one list of launchers. Editable by hand. Reloaded on every run;
 saved at session end.
 
 #+begin_src common-lisp
-  ((WINE :NAME "Touhou 9"
-         :PROFILE (("DXVK_ASYNC" "1"))          ; inline env pairs
-         :EXEC "/path/th09.exe")
-   (EXEC :NAME "Monster Hunter Rise"
-         :PROFILE MHR
-         :EXEC "/path/to/mhr"
-         :ARGS ("-u" "MMOFAN"))
-   (STEAM :NAME "Elin JRPG"
-          :EXEC "steam://rungameid/2135150"))
+((WINE :NAME "Touhou 9"
+  :PROFILE (("DXVK_ASYNC" "1"))          ; inline env pairs
+  :EXEC "/path/th09.exe")
+ (EXEC :NAME "Monster Hunter Rise"
+  :PROFILE MHR
+  :EXEC "/path/to/mhr"
+  :ARGS ("-u" "MMOFAN"))
+ (STEAM :NAME "Elin JRPG"
+  :EXEC "steam://rungameid/2135150"))
 #+end_src
 
 ** Profiles
@@ -126,7 +206,7 @@ saved at session end.
 Named profiles live in =~/.config/game-launcher/profiles.lisp=:
 
 #+begin_src common-lisp
-  ((PROFILE :NAME MHFZ :ENV (("MHF_PASS" "mmofan"))))
+((PROFILE :NAME MHFZ :ENV (("MHF_PASS" "mmofan"))))
 #+end_src
 
 Launchers referencing =MHFZ= share one profile object — edit the
@@ -134,44 +214,41 @@ profile once, every launcher picks it up.
 
 ** Defining a profile inline (marker syntax)
 
-Writing an inline profile followed by ="=>NAME"= defines a named profile
-on first load and replaces the launcher's entry with a reference:
+	Writing an inline profile followed by ="=>NAME"= defines a named profile
+	on first load and replaces the launcher's entry with a reference:
 
 #+begin_src common-lisp
-  (EXEC :NAME "MHR" :PROFILE (("DXVK_ASYNC" "1")) =>MHR
-        :EXEC "/path/to/mhr")
+	(EXEC :NAME "MHR" :PROFILE (("DXVK_ASYNC" "1")) =>MHR
+	 :EXEC "/path/to/mhr")
 #+end_src
 
-After the next save, the form reads =:PROFILE MHR= and the profile is
-stored in profiles.lisp. Re-marking a form updates the shared profile.
+	After the next save, the form reads =:PROFILE MHR= and the profile is
+	stored in profiles.lisp. Re-marking a form updates the shared profile.
 
-* Planned Features
+* TODO Planned Features [4/4]
 
-** Runtime Management
+- [X] Runtime Management:
 
-Improve runtime discovery and management, including easier configuration of external runtimes.
+  - [X] Improve runtime discovery and management, including easier configuration of external runtimes.
 
-*** planned: procedure type runtimes
-configure a runtime to use multiple runtimes in a procedure
+  - [X] configure a runtime to use phases.
 
-** Environment Configuration
+- [X] Environment Configuration
 
-Allow launchers to define environment variables and other process-level configuration.
+  - [X] Allow launchers to define environment variables and other process-level configuration.
 
+- [X] Command-Line Interface
 
-** Command-Line Interface
+  - [X] Provide a dedicated command-line interface for creating, inspecting, and launching games.
 
-Provide a dedicated command-line interface for creating, inspecting, and launching games.
+- [X] Additional Runtime Backends
 
-
-** Additional Runtime Backends
-
-Expand support for different game engines, compatibility layers, and external runtime systems.
+  - [ ] Expand support for different game engines, compatibility layers, and external runtime systems.
 
 * Design Goals
 
-- Keep the core framework small.
-- Represent launcher configuration as data.
-- Preserve configurations even when their runtime is unavailable.
-- Make adding new runtimes straightforward.
-- Make the framework usable both as a library and as a standalone launcher.
+	- Keep the core framework small.
+	- Represent launcher configuration as data.
+	- Preserve configurations even when their runtime is unavailable.
+	- Make adding new runtimes straightforward.
+	- Make the framework usable both as a library and as a standalone launcher.

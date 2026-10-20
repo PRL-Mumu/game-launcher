@@ -7,7 +7,7 @@
 (defun find-launcher (name)
   (gethash name *launchers*))
 
-(defun remove-launcher (query)
+(defun remove-select-launcher (query)
   (let* ((matches (fuzzy-match:fuzzy-match query (launcher-names)))
          (choice (first matches)))
     (when choice
@@ -93,7 +93,7 @@
     (display-launchers launchers)
     (let ((name (launcher-name (choose-launcher launchers))))
       (when name
-	(remove-launcher name)))))
+	(remove-select-launcher name)))))
 
 (defun prompt-launcher-search ()
   (format t "~&Search: ")
