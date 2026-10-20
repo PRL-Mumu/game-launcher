@@ -116,18 +116,16 @@
 
 (defun main ()
   (in-package :game-launcher)
-  (runtime-path)
   (with-launcher-session ()
-			 (let ((args (cdr sb-ext:*posix-argv*)))
-			   (if args
-			     ;; Command-line mode
-			     (let ((launcher (select-launcher (first args))))
-			       (cond
-				 (launcher
-				   (format t "launching: ~A~%" (launcher-name launcher))
-				   (launch launcher))
-				 (t (format t "No matching launcher.~%")))
-			       )
-
-			     ;; Interactive mode
-			     (prompt-launcher-list)))))
+    (let ((args (cdr sb-ext:*posix-argv*)))
+      (if args
+	  ;; Command-line mode
+	  (let ((launcher (select-launcher (first args))))
+	    (cond
+	      (launcher
+	       (format t "launching: ~A~%" (launcher-name launcher))
+	       (launch launcher))
+	      (t (format t "No matching launcher.~%")))
+	    )
+	  ;; Interactive mode
+	  (prompt-launcher-list)))))

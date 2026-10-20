@@ -42,22 +42,21 @@
   (remove-launcher name)
   (write-launchers-to-file (store-path)))
 
-(defun store-path ();; TODO: add configuration
-  "returns the expected store path"
-  (or
-   ;; check for GAME_LAUNCHER_STORE ENV for custom path
-   (let ((store-path (uiop:getenv "GAME_LAUNCHER_STORE")))
-     (when store-path
-       (probe-file store-path)))
-   (let ((user (merge-pathnames
-		"game-launcher/launcher-store.lisp"
-		(uiop:xdg-config-home))))
-     (when (probe-file user)
-       user))
-   ;; bundled default
-   (merge-pathnames
-    "src/store/launcher-store.lisp"
-    (asdf:system-source-directory :game-launcher))))
+(defvar *game-launcher-store-path* nil)
+
+(defun store-path (&optional path)
+  (or (when path (setf *game-launcher-store-path* (probe-file path)))
+      (when *game-launcher-store-path*
+	*game-launcher-store-path*)
+      (let ((p (uiop:getenv "GAME_LAUNCHER_STORE")))
+	(when p (probe-file p)))
+      (let ((user (merge-pathnames
+		    "game-launcher/launcher-store.lisp"
+		    (uiop:xdg-config-home))))
+	(when (probe-file user) user))
+      (merge-pathnames
+	"src/store/launcher-store.lisp"
+	(asdf:system-source-directory :game-launcher))))
 
 (defvar *unknown-form-counter* 0)
 
@@ -68,8 +67,8 @@
 
 (defun save-unknown-form (form)
   (make-instance 'unknown-launcher
-                 :name (make-form-name form)
-                 :data form))
+		 :name (make-form-name form)
+		 :data form))
 
 (defun read-launchers-from-file (filename)
   (let ((*package* (find-package :game-launcher)))
@@ -78,28 +77,30 @@
 	(dolist (form forms)
 
 	  (handler-case
-	      (register-launcher-instance
-	       (apply #'make-launcher form))
+	    (register-launcher-instance
+	      (apply #'make-launcher form))
 	    (unknown-runtime () ;; test
-	      (register-unknown-launcher
-	       (save-unknown-form form)))
+			     (register-unknown-launcher
+			       (save-unknown-form form)))
 	    (error (e)
-	      (warn "Preserving malformed launcher ~%~S~%:~A~%" form e)
-	      (register-unknown-launcher (save-unknown-form form)))));; folded
+		   (warn "Preserving malformed launcher ~%~S~%:~A~%" form e)
+		   (register-unknown-launcher (save-unknown-form form)))));; folded
 	))))
 
 (defmacro with-launcher-session (() &body body)
   `(progn
-     (read-profiles-from-file (env-profile-config-path))
-     (read-launchers-from-file (store-path))
+     (initialize-launcher)
      (unwind-protect
-	  (progn ,@body)
-       (write-launchers-to-file (store-path))
-       (write-profiles-to-file (env-profile-config-path)))))
+       (progn ,@body)
+       (end-launcher))))
 
 (defun initialize-launcher ()
   (read-profiles-from-file (env-profile-config-path))
   (read-launchers-from-file (store-path)))
+
+(defun end-launcher ()
+  (write-launchers-to-file (store-path))
+  (write-profiles-to-file (env-profile-config-path)))
 
 (defun uninitialize-launcher ()
   (clrhash *launchers*)

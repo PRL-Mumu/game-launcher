@@ -70,9 +70,10 @@
 	 )
     (if app-id
       (register-launcher-instance
-	(make-launcher 'steam
-		       :name (steam-app-name app-id)
-		       :exec (format nil "steam://rungameid/~D" app-id)))
+	(game-launcher::make-steam-launcher
+	 :name (steam-app-name app-id)
+	 :profile (game-launcher::env)
+	 :exec (format nil "steam://rungameid/~D" app-id)))
       (warn "Could not determine Steam App ID from ~S" id))))
 
 (defparameter +steam-import-blacklist+
@@ -89,9 +90,10 @@
 			 path)) "AppState" "name")))
 
 	(register-launcher-instance
-	 (make-launcher 'steam
-			:name app-name
-			:exec (format nil "steam://rungameid/~D" steam-id))))))
+	 (game-launcher::make-steam-launcher
+	  :name app-name
+	  :profile (game-launcher::env)
+	  :exec (format nil "steam://rungameid/~D" steam-id))))))
 
 (defun steam-local-import-all ()
   (let* ((libraryfoldersvdf (parse-acf (uiop:xdg-data-home "Steam/steamapps/libraryfolders.vdf")))

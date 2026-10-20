@@ -1,15 +1,10 @@
 (in-package #:game-launcher)
 
 (defclass launcher ()
-  ((name
-    :initarg :name
-    :accessor launcher-name)
-   (profile
-    :initarg :profile
-    :accessor launcher-profile)
-   (exec
-    :initarg :exec
-    :accessor launcher-exec)))
+  ((name    :initarg :name    :accessor launcher-name)
+   (exec    :initarg :exec    :accessor launcher-exec)
+   (profile :initarg :profile :accessor launcher-profile)  ; env data
+   (phases  :initarg :phases  :accessor launcher-phases))) ; clause list
 
 (defgeneric launcherp (obj))
 (defmethod launcherp ((o launcher))
@@ -23,6 +18,9 @@
 (defgeneric launch (launcher))
 
 (defgeneric status (launcher &optional stream))
+
+(defgeneric launcher-args (launcher)
+  (:method ((launcher launcher)) nil))
 
 (defgeneric profile-slot->form (p)
   (:documentation "Convert a profile slot to a form representation. Takes a profile object and returns a list containing the keyword :profile and either the name or environment of the profile."))
@@ -38,13 +36,13 @@
   (append
     `(,(launcher-runtime launcher)
        :name ,(launcher-name launcher))
-    (profile-slot->form (launcher-profile launcher))
-    (when (launcher-exec launcher)
-      `(:exec ,(launcher-exec launcher)))))
+    (when (launcher-exec launcher) ;; check when
+      `(:exec ,(launcher-exec launcher)))
+    (profile-slot->form (launcher-profile launcher))))
 
 (defmethod launcher-end ((launcher launcher))
   "Terminate the launcher. Default implementation does nothing.
-This method can be overridden by subclasses to perform cleanup."
+  This method can be overridden by subclasses to perform cleanup."
   nil)
 
 (defvar *runtime-index* (make-hash-table :test 'eq))
@@ -58,19 +56,19 @@ This method can be overridden by subclasses to perform cleanup."
 
 (defmacro define-launcher-runtime (name class &optional constructor)
   "Register a launcher runtime. If CONSTRUCTOR is omitted, generate
-   a MAKE-<NAME>-LAUNCHER function that forwards to MAKE-LAUNCHER."
+  a MAKE-<NAME>-LAUNCHER function that forwards to MAKE-LAUNCHER."
   (if constructor
+    `(progn
+       (defmethod launcher-runtime ((launcher ,class))
+	 ',name)
+       (register-launcher ',name #',constructor))
+    (let ((ctor (intern (format nil "MAKE-~A-LAUNCHER" name))))
       `(progn
-         (defmethod launcher-runtime ((launcher ,class))
-           ',name)
-         (register-launcher ',name #',constructor))
-      (let ((ctor (intern (format nil "MAKE-~A-LAUNCHER" name))))
-        `(progn
-           (defmethod launcher-runtime ((launcher ,class))
-             ',name)
-           (defun ,ctor (&rest args)
-             (apply #'make-launcher :runtime ',name args))
-           (register-launcher ',name #',ctor)))))
+	 (defmethod launcher-runtime ((launcher ,class))
+	   ',name)
+	 (defun ,ctor (&rest args)
+	   (apply #'make-launcher :runtime ',name args))
+	 (register-launcher ',name #',ctor)))))
 
 
 (defun runtime-file-provides (file)
@@ -152,7 +150,7 @@ This method can be overridden by subclasses to perform cleanup."
 (defun rush-debug-load-runtimes ()
   ;; Reload all known runtimes for debugging purposes.
   (loop :for i :in (known-runtimes (runtime-path))
-        :do (reload-runtime (runtime-path) i)))
+	:do (reload-runtime (runtime-path) i)))
 
 (defun load-runtimes (dir)
   (index-runtimes dir))
@@ -178,16 +176,16 @@ This method can be overridden by subclasses to perform cleanup."
   (multiple-value-bind (clean-args marker) (split-profile-marker args)
     (let ((constructor (gethash runtime *launcher-constructors*)))
       (if constructor
-          (progn
-            (setf (getf clean-args :profile)
-                  (if marker
-                      (ensure-profile (marker->name marker)
-                                      (getf clean-args :profile))
-                      (resolve-profile (getf clean-args :profile))))
-            (apply constructor clean-args))
-          (restart-case
-              (error 'unknown-runtime :runtime runtime)
-            (continue ()
-              :report (lambda (s)
-                        (format s "Skip this launcher (~A)" runtime))
-              nil))))))
+	(progn
+	  (setf (getf clean-args :profile)
+		(if marker
+		  (ensure-profile (marker->name marker)
+				  (getf clean-args :profile))
+		  (resolve-profile (getf clean-args :profile))))
+	  (apply constructor clean-args))
+	(restart-case
+	  (error 'unknown-runtime :runtime runtime)
+	  (continue ()
+	    :report (lambda (s)
+		      (format s "Skip this launcher (~A)" runtime))
+	    nil))))))

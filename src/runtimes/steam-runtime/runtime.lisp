@@ -1,6 +1,5 @@
 (in-package #:game-launcher)
 
-
 (defclass steam-launcher (launcher)
   ())
 

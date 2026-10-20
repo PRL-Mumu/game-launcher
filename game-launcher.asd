@@ -1,6 +1,6 @@
 (defsystem #:game-launcher
 	   :name "game-launcher"
-	   :version "0.2.2"
+	   :version "0.2.5"
 	   :description "Simple game launcher written in common lisp"
 	   :author "Rush Empire"
 	   :license "GPLv3"
@@ -9,7 +9,6 @@
 	   (#:uiop
 	    #:fuzzy-match
 	    #:bordeaux-threads
-	    #:cl-hooks ;; unused
 	    )
 	   :pathname "src"
 
@@ -22,6 +21,7 @@
 	    (:module "runtimes"
 		     :components
 		     ((:file "launcher-class")
+		      (:file "launch-pipeline")
 		      (:file "unknown-launcher-class")))
 	    (:module "imports"
 		     :components ((:file "import")))

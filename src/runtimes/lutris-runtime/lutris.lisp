@@ -12,21 +12,6 @@
   configpath
   installed)
 
-(defun yaml-env->profile (yaml)
-  (let* ((game (yaml-get yaml "game"))
-         (prefix (yaml-get game "prefix")))
-    (make-profile
-     (append (env-table->alist (yaml-get (yaml-get yaml "system") "env"))
-             (env-table->alist (yaml-get game "env"))
-             (when prefix
-               (list (list "WINEPREFIX" (scalar->string prefix))))))))
-
-(defun yaml-get (table key)
-  (when table
-    (loop for k being the hash-keys of table
-          when (string-equal k key)
-            return (values (gethash k table)))))
-
 (defun scalar->string (v)
   "coerce a YAML scalar to its string form as it would appear in env"
   (cond ((eq v t) "true")
@@ -38,6 +23,24 @@
     (loop for k being the hash-keys of tbl
           for v being the hash-values of tbl
           collect (list (princ-to-string k) (scalar->string v)))))
+
+(defun yaml-get (table key)
+  (when table
+    (loop for k being the hash-keys of table
+          when (string-equal k key)
+            return (values (gethash k table)))))
+
+(defun yaml-env->profile (yaml)
+  (let* ((game (yaml-get yaml "game"))
+         (prefix (yaml-get game "prefix")))
+    (make-profile
+     (append (env-table->alist (yaml-get (yaml-get yaml "system") "env"))
+             (env-table->alist (yaml-get game "env"))
+             (when prefix
+               (list (list "WINEPREFIX" (scalar->string prefix))))))))
+
+
+
 
 (defun row-get (row column)
   ;; column is a plain string like "name"; DBI keywords are lowercase
@@ -137,22 +140,49 @@
 
 (defun convert-lutris-game-struct (game)
   (let ((yaml-path (lutris-yaml-config-path (lutris-game-configpath game))))
-    (if (and (string-equal (lutris-game-runner game) "wine") yaml-path)
-        (let* ((yaml (cl-yaml:parse (uiop:read-file-string yaml-path)))
-               (game-block (yaml-get yaml "game"))
-               (exe (yaml-get game-block "exe")))
-          (if exe
-              (make-instance 'wine-launcher
-                             :name (lutris-game-name game)
-                             :exec (scalar->string exe)
-                             :args (normalize-args (yaml-get game-block "args"))
-                             :profile (yaml-env->profile yaml)
-                             :lutris-id (lutris-game-id game)
-			     )
-              (warn "skipping ~A: wine game, no exe in yaml"
-                    (lutris-game-name game))))
-        (warn "skipping ~A: runner ~S not supported"
-              (lutris-game-name game) (lutris-game-runner game)))))
+    (cond
+        ;; BROWSER LAUNCHER BUILDER
+      ((and (string-equal (lutris-game-runner game) "web") yaml-path)
+       (let* ((yaml (cl-yaml:parse (uiop:read-file-string yaml-path)))
+	      (game-block (yaml-get yaml "game"))
+	      (link (yaml-get game-block "main_file")))
+
+	 (if link
+	     (progn
+	       (when (load-runtime (runtime-path) 'game-launcher::browser)
+		 (make-browser-launcher
+		  :name (lutris-game-name game)
+		  :url (scalar->string link)
+		  :args (normalize-args
+			 (yaml-get game-block "args"))
+		  :profile (yaml-env->profile yaml)
+		  :lutris-id (lutris-game-id game))))
+	     (warn "skipping ~A: browser game, no link in yaml"
+		     (lutris-game-name game)))))
+
+	  ;; WINE LAUNCHER BUILDER
+	  ((and (string-equal (lutris-game-runner game) "wine") yaml-path)
+	   (let* ((yaml (cl-yaml:parse (uiop:read-file-string yaml-path)))
+		  (game-block (yaml-get yaml "game"))
+		  (exe (yaml-get game-block "exe")))
+	     (if exe
+		 (progn
+		   (when (load-runtime (runtime-path) 'game-launcher::wine)
+		     (make-wine-launcher
+		      :name (lutris-game-name game)
+		      :exec (scalar->string exe)
+		      :args (normalize-args (yaml-get game-block "args"))
+		      :profile (yaml-env->profile yaml)
+		      :lutris-id (lutris-game-id game))))
+
+		 (warn "skipping ~A: wine game, no exe in yaml"
+		       (lutris-game-name game)))))
+
+	  (t
+	   (warn "skipping ~A: runner ~S not supported"
+		 (lutris-game-name game) (lutris-game-runner game)))
+
+	  )))
 
 (defun convert-lutris-game (name)
   (alexandria:if-let ((game (find-lutris-game name)))
@@ -170,13 +200,13 @@
   (let (imported skipped failed)
     (dolist (game *lutris-games*)
       (handler-case
-          (let ((l (convert-lutris-game-struct game)))
-            (if l
-                (progn (register-launcher-instance l) (push l imported))
-                (push (lutris-game-name game) skipped)))
-        (error (e)
-          (push (lutris-game-name game) failed)
-          (warn "failed to import ~A: ~A" (lutris-game-name game) e))))
+	  (let ((l (convert-lutris-game-struct game)))
+	    (if l
+		(progn (register-launcher-instance l) (push l imported))
+		(push (lutris-game-name game) skipped)))
+	(error (e)
+	  (push (lutris-game-name game) failed)
+	  (warn "failed to import ~A: ~A" (lutris-game-name game) e))))
     (format t "lutris import: ~D converted, ~D skipped, ~D failed~%"
-            (length imported) (length skipped) (length failed))
+	    (length imported) (length skipped) (length failed))
     (values imported skipped failed)))

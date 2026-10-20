@@ -11,18 +11,25 @@
     #:assoc-path
     #:main
     #:make-launcher
+    #:with-launcher-session
     #:launcher-names
+    #:display-launchers
     #:list-launchers
+    #:launcher-list
     #:list-unknown-launchers
     #:register-launcher-instance
     #:select-launcher
     #:initialize-launcher
+    #:import-launcher-form
     #:uninitialize-launcher
     #:find-launcher
+    #:remove-launcher
     #:run-launcher-thread
     #:launch
     #:launcher-name
     #:load-runtime
+    #:prompt-launcher-list
+    #:prompt-launcher-remove-list
     #:runtime-path
     #:store-path
     #:export-runtime-symbol-into-core
