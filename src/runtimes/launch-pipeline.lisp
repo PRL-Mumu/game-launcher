@@ -5,7 +5,7 @@
 
 (defparameter *default-launch-pipeline*
   '((pre  . nil)
-    (exec . exec-phase)
+    (exec . nil)
     (post . nil)))
 
 ;;; --- list manipulation ------------------------------------------
@@ -53,13 +53,6 @@
     (symbol   (symbol-function spec))
     (cons     (compile-phase-form spec))))
 
-(defun ctx-env      (ctx) (getf ctx :env))
-(defun ctx-exec     (ctx) (getf ctx :exec))
-(defun ctx-args     (ctx) (getf ctx :args))
-(defun ctx-process  (ctx) (getf ctx :process))
-(defun ctx-processes (ctx) (getf ctx :processes))
-(defun ctx-launcher (ctx) (getf ctx :launcher))
-
 (defun compile-phase-form (form)
   (let ((*package* (find-package :game-launcher))
         (*read-eval* nil))
@@ -75,23 +68,12 @@
 
 ;;; --- default phases ---------------------------------------------
 
-(defun exec-phase (ctx next)
-  "Spawn (exec args) with env. Store the process, continue."
-  (let ((proc (sb-ext:run-program (getf ctx :exec)
-                                  (getf ctx :args)
-                                  :environment (getf ctx :env)
-                                  :search t
-                                  :output *standard-output*
-                                  :wait t ;; keep the wait on and use threaded launch
-				  )))
-    (setf (getf ctx :process) proc)
-    (funcall next ctx)))
-
-(defun pipeline-terminal (ctx)
-  "Verify a process was spawned; return CTX."
-  (unless (getf ctx :process)
-    (error "launch pipeline completed without spawning: ~a" ctx))
-  ctx)
+;; TODO check use
+;; (defun pipeline-terminal (ctx)
+;;   "Verify a process was spawned; return CTX."
+;;   (unless (getf ctx :process)
+;;     (error "launch pipeline completed without spawning: ~a" ctx))
+;;   ctx)
 
 ;;; --- inspection -------------------------------------------------
 
@@ -102,10 +84,6 @@
         for i from 0
         do (format stream "  ~2d. ~a ~:[(anchor)~;~:*-> ~a~]~%"
                    i name fn)))
-
-(defstruct async-proc
-  process
-  stream)
 
 (defun run-command-async (ctx argv &key directory (wait nil) log-path)
   "Spawn ARGV in CTX's environment. If WAIT, block and check exit code.
@@ -134,8 +112,36 @@
             (append (getf ctx :processes) (list proc))))
     ctx))
 
+(defun split-shell-args (string)
+  "split a command-line-style string into argv elements;
+   double/single quotes group, whitespace outside quotes separates"
+  (let ((args '())
+        (buf (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t))
+        (started nil)
+        (quote nil))
+    (flet ((flush ()
+             (when started
+               (push (copy-seq buf) args)
+               (setf (fill-pointer buf) 0 started nil))))
+      (loop for ch across string
+            do (cond
+                 ((and quote (char= ch quote))
+                  (setf quote nil started t))
+                 (quote
+                  (vector-push-extend ch buf))
+                 ((member ch '(#\" #\') :test #'char=)
+                  (setf quote ch started t))
+                 ((member ch '(#\space #\tab #\newline))
+                  (flush))
+                 (t
+                  (vector-push-extend ch buf)
+                  (setf started t))))
+      (when quote (warn "unterminated quote in args: ~S" string))
+      (flush))
+    (nreverse args)))
+
 (defun run-command (env argv)
-  "Spawn ARGV with ENV, wait for completion. For profile pre/post commands."
+  "Spawn ARGV with ENV, wait for completion"
   (sb-ext:run-program (first argv) (rest argv)
 		      :environment env
 		      :output *standard-output*

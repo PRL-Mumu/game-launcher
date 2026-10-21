@@ -5,7 +5,7 @@
    (env  :initarg :env  :initform nil :accessor profile-env)))
 
 ;; add =><custom-profile-name> to the end of a :PROFILE block to store it
-(defparameter *named-profiles* (make-hash-table)) 
+(defparameter *named-profiles* (make-hash-table))
 
 (defun valid-env-entry-p (entry)
   (and (consp entry)
@@ -104,23 +104,12 @@
                   (progn (warn "unknown profile ~S" spec)
                          (make-instance 'profile :name spec :env nil))))))
 
-(defun save-profile (symbol env)
-  "Register SYMBOL as a named profile with ENV pairs; persists to profiles.lisp."
-  (setf (gethash symbol *named-profiles*)
-        (make-instance 'profile :name symbol :env (make-profile env)))
-  (write-profiles-to-file (env-profile-config-path)))
 
-(defun name-launcher-profile (launcher symbol)
-  "Turn LAUNCHER's inline profile into a named one."
-  (save-profile symbol (profile-env (launcher-profile launcher)))
-  (setf (launcher-profile launcher)
-        (make-instance 'profile :name symbol
-                                :env (profile-env (launcher-profile launcher)))))
 
 (defun profile-spec (profile)
   (if (profile-name profile)
-      (profile-name profile)         
-      (profile-env profile)))         
+      (profile-name profile)
+      (profile-env profile)))
 
 (defun split-profile-marker (plist)
   "Clean a launcher-args plist: remove a =>NAME marker wherever it sits.
@@ -140,14 +129,10 @@ Returns (VALUES clean-plist marker), marker the NAME symbol or nil."
           (find-package :game-launcher)))
 
 (defun ensure-profile (name env)
-  (let ((pairs (profile-env (make-profile env))))  
+  (let ((pairs (profile-env (make-profile env))))
     (let ((existing (gethash name *named-profiles*)))
       (if existing
           (progn (setf (profile-env existing) pairs) existing)
           (let ((p (make-instance 'profile :name name :env pairs)))
             (setf (gethash name *named-profiles*) p)
             p)))))
-
-(defparameter *default-env*
-  (env))
-

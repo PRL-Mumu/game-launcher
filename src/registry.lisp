@@ -38,29 +38,30 @@
     (remhash name *unknown-launchers*))
   (write-launchers-to-file (store-path)))
 
-(defun force-remove-launcher (name)
-  (remove-launcher name)
-  (write-launchers-to-file (store-path)))
-
 (defvar *game-launcher-store-path* nil)
 
 (defun store-path (&optional path)
-  (or (when path (setf *game-launcher-store-path* (probe-file path)))
-      (when *game-launcher-store-path*
-	*game-launcher-store-path*)
-      (let ((p (uiop:getenv "GAME_LAUNCHER_STORE")))
-	(when p (probe-file p)))
-      (let ((user (merge-pathnames
-		    "game-launcher/launcher-store.lisp"
-		    (uiop:xdg-config-home))))
-	(when (probe-file user) user))
-      (merge-pathnames
-	"src/store/launcher-store.lisp"
-	(asdf:system-source-directory :game-launcher))))
+  (let* ((checked-path (and path (setf *game-launcher-store-path* (probe-file path))))
+         (current-store *game-launcher-store-path*)
+         (env-store (let ((p (uiop:getenv "GAME_LAUNCHER_STORE")))
+                      (when p (probe-file p))))
+         (user-store (let ((user (merge-pathnames
+                                   "game-launcher/launcher-store.lisp"
+                                   (uiop:xdg-config-home))))
+                       (when (probe-file user) user)))
+         (default-store (merge-pathnames
+                          "src/store/launcher-store.lisp"
+                          (asdf:system-source-directory :game-launcher))))
+    (or checked-path
+        current-store
+        env-store
+        user-store
+        default-store)))
 
 (defvar *unknown-form-counter* 0)
 
 (defun make-form-name (form-data)
+  "returns a number for the name, unknown launchers do not need stable names"
   (declare (ignore form-data))
   (format nil "unknown-~D"
 	  (incf *unknown-form-counter*)))
@@ -70,29 +71,24 @@
 		 :name (make-form-name form)
 		 :data form))
 
+(defun read-launcher (form)
+  (handler-case
+      (register-launcher-instance
+       (apply #'make-launcher form))
+    (unknown-runtime () ;; test
+      (register-unknown-launcher
+       (save-unknown-form form)))
+    (error (e)
+      (warn "Preserving malformed launcher ~%~S~%:~A~%" form e)
+      (register-unknown-launcher (save-unknown-form form)))))
+
 (defun read-launchers-from-file (filename)
   (let ((*package* (find-package :game-launcher)))
     (with-open-file (stream filename :direction :input)
-      (let ((forms (read stream nil '())))   ; don't die on an empty store file
+      (let ((forms (read stream nil '()))) ; don't die on an empty store file
 	(dolist (form forms)
+	  (read-launcher form))))))
 
-	  (handler-case
-	    (register-launcher-instance
-	      (apply #'make-launcher form))
-	    (unknown-runtime () ;; test
-			     (register-unknown-launcher
-			       (save-unknown-form form)))
-	    (error (e)
-		   (warn "Preserving malformed launcher ~%~S~%:~A~%" form e)
-		   (register-unknown-launcher (save-unknown-form form)))));; folded
-	))))
-
-(defmacro with-launcher-session (() &body body)
-  `(progn
-     (initialize-launcher)
-     (unwind-protect
-       (progn ,@body)
-       (end-launcher))))
 
 (defun initialize-launcher ()
   (read-profiles-from-file (env-profile-config-path))
@@ -100,8 +96,16 @@
 
 (defun end-launcher ()
   (write-launchers-to-file (store-path))
-  (write-profiles-to-file (env-profile-config-path)))
+  (write-profiles-to-file (env-profile-config-path))
+  (uninitialize-launcher))
 
 (defun uninitialize-launcher ()
   (clrhash *launchers*)
   (clrhash *unknown-launchers*))
+
+(defmacro with-launcher-session (() &body body)
+  `(unwind-protect
+        (progn
+          (initialize-launcher)
+          ,@body)
+     (end-launcher)))

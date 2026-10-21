@@ -140,5 +140,7 @@ exec ros -Q -- $0 "$@"
 						 (format t "No matching launcher.~%")))))
 
 					 (t
-					   (game-launcher:prompt-launcher-list)))))
+					   (when-let ((launcher (prompt-launcher-list)))
+						     (bt:join-thread launcher))
+					   ))))
 ;;; vim: set ft=lisp lisp:

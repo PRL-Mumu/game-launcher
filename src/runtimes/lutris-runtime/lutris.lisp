@@ -95,34 +95,6 @@
             while row
             collect (row->lutris-game row)))))
 
-(defun split-shell-args (string)
-  "split a command-line-style string into argv elements;
-   double/single quotes group, whitespace outside quotes separates"
-  (let ((args '())
-        (buf (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t))
-        (started nil)
-        (quote nil))
-    (flet ((flush ()
-             (when started
-               (push (copy-seq buf) args)
-               (setf (fill-pointer buf) 0 started nil))))
-      (loop for ch across string
-            do (cond
-                 ((and quote (char= ch quote))
-                  (setf quote nil started t))
-                 (quote
-                  (vector-push-extend ch buf))
-                 ((member ch '(#\" #\') :test #'char=)
-                  (setf quote ch started t))
-                 ((member ch '(#\space #\tab #\newline))
-                  (flush))
-                 (t
-                  (vector-push-extend ch buf)
-                  (setf started t))))
-      (when quote (warn "unterminated quote in args: ~S" string))
-      (flush))
-    (nreverse args)))
-
 (defun normalize-args (a)
   (typecase a
     (null   nil)
