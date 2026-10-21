@@ -3,14 +3,7 @@
 
 (defun import-launcher-form (form)
   (let ((*package* (find-package :game-launcher)))
-    (handler-case
-      (register-launcher-instance
-	(apply #'make-launcher form))
-      (unknown-runtime ()
-		       (register-unknown-launcher
-			 (save-unknown-form form)))
-      (error (e)
-	     (warn "Could not import launcher ~S: ~A" form e)))))
+    (read-launcher form)))
 
 
 (defun assoc-path (alist path &key (key #'identity) (test #'eql) (default nil))
@@ -23,6 +16,3 @@
 
 ; (defun import-launcher-desktop (path)
 ;   (format t "importing from desktop path"))
-
-
-

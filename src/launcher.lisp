@@ -7,12 +7,6 @@
 (defun find-launcher (name)
   (gethash name *launchers*))
 
-(defun remove-select-launcher (query)
-  (let* ((matches (fuzzy-match:fuzzy-match query (launcher-names)))
-         (choice (first matches)))
-    (when choice
-      (remhash (launcher-name (find-launcher choice)) *launchers*))))
-
 (defun launcher-list ()
   "collect and return a list of launchers from *launchers*"
   (loop for launcher being the hash-values of *launchers*
@@ -23,11 +17,13 @@
 	collect launcher))
 
 (defun select-launcher (query)
-  "matches and returns closest launcher name"
-  (let* ((matches (fuzzy-match:fuzzy-match query (launcher-names)))
-	 (choice (first matches)))
-    (when choice
-      (find-launcher choice))))
+  "Fuzzy-match QUERY against launcher names; return best match or NIL."
+  (first (fuzzy-match:fuzzy-match query (launcher-names))))
+
+(defun remove-select-launcher (query)
+  "Fuzzy-match QUERY and remove the best-matching launcher, persistently."
+  (when-let (name (select-launcher-name query))
+    (remove-launcher name)))
 
 (defun search-launcher-list (query)
   (fuzzy-match:fuzzy-match
@@ -66,66 +62,24 @@
            (nth (1- n) launchers)))))))
 
 (defun run-launcher-thread (launcher)
-  "run the launcher in a thread"
   (bt:make-thread
    (lambda ()
-     (unwind-protect
-	  (format t "launching ~A...~%" (launcher-name launcher))
-       (launch launcher)
-       (launcher-end launcher)))
-   :name (format nil "Launcher: ~A" (launcher-name launcher))))
-
-(defun launch-by-name (name)
-  (let ((launcher (find-launcher name)))
-    (when launcher
-      (run-launcher-thread launcher))))
+     (handler-case
+         (unwind-protect
+              (launch launcher))
+       (error (e)
+         (format *error-output* "~&!! LAUNCH ERROR: ~a~%" e)
+         (sb-debug:print-backtrace :stream *error-output* :count 30))))))
 
 (defun prompt-launcher-list ()
   (let ((launchers (launcher-list)))
     (display-launchers launchers)
-    (let ((launcher (choose-launcher launchers)))
-      (when launcher
-	(run-launcher-thread launcher)))))
+    (when-let (launcher (choose-launcher launchers))
+      (run-launcher-thread launcher))))
 
 (defun prompt-launcher-remove-list ()
   "display launcher list and then remove chosen launcher from *launchers*"
   (let ((launchers (launcher-list)))
     (display-launchers launchers)
-    (let ((name (launcher-name (choose-launcher launchers))))
-      (when name
-	(remove-select-launcher name)))))
-
-(defun prompt-launcher-search ()
-  (format t "~&Search: ")
-  (finish-output)
-
-  (let* ((query (read-line))
-         (matches (search-launcher-list query)))
-    (cond
-      ((null matches)
-       (format t "No matches.~%"))
-
-      ((= (length matches) 1)
-       (launch (first matches)))
-
-      (t
-       (display-launchers matches)
-       (let ((launcher (choose-launcher matches)))
-	 (when launcher
-	   (launch launcher)))))))
-
-(defun main ()
-  (in-package :game-launcher)
-  (with-launcher-session ()
-    (let ((args (cdr sb-ext:*posix-argv*)))
-      (if args
-	  ;; Command-line mode
-	  (let ((launcher (select-launcher (first args))))
-	    (cond
-	      (launcher
-	       (format t "launching: ~A~%" (launcher-name launcher))
-	       (launch launcher))
-	      (t (format t "No matching launcher.~%")))
-	    )
-	  ;; Interactive mode
-	  (prompt-launcher-list)))))
+    (when-let (launcher (choose-launcher launchers))
+      (remove-launcher (launcher-name launcher)))))

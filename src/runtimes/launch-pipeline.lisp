@@ -66,16 +66,6 @@
     (dolist (clause clauses phases)
       (setf phases (apply-phase-clause phases clause)))))
 
-;;; --- default phases ---------------------------------------------
-
-;; TODO check use
-;; (defun pipeline-terminal (ctx)
-;;   "Verify a process was spawned; return CTX."
-;;   (unless (getf ctx :process)
-;;     (error "launch pipeline completed without spawning: ~a" ctx))
-;;   ctx)
-
-;;; --- inspection -------------------------------------------------
 
 (defun print-pipeline (pipeline &optional (stream *standard-output*))
   "Print PIPELINE as an ordered list, marking anchors."
@@ -149,20 +139,30 @@
 		      :wait t))
 
 (defun teardown-processes (ctx)
+  "Tear down each entry in ctx's :processes list. Entries are OS
+   processes (from run-command-async) or (thread . stop) conses.
+   Clears the list even if an individual teardown fails."
   (dolist (p (getf ctx :processes))
-    (etypecase p
-      (cons                              ; (thread . stop)
-       (let ((thread (car p))
-             (stop   (cdr p)))
-         (funcall stop)
-         (sb-thread:join-thread thread)))
-      (sb-impl::process                  ; OS process
-       (sb-ext:process-kill p 15)
-       (sb-ext:process-wait p))))
+    (handler-case
+        (cond
+          ((and (consp p) (functionp (cdr p)))  ; (thread . stop)
+           (funcall (cdr p))
+           (sb-thread:join-thread (car p)))
+          ((sb-ext:process-p p)                 ; OS process
+           (sb-ext:process-kill p 15)
+           (sb-ext:process-wait p))
+          (t (warn "teardown-processes: unknown entry ~s" p)))
+      (error (e)
+        (warn "teardown-processes: failed on ~s: ~a" p e))))
   (setf (getf ctx :processes) nil)
   ctx)
 
 (defun run-pipeline (phases ctx)
-  (dolist (phase phases ctx)
-    (let ((fn (cdr phase)))
-      (when fn (setf ctx (funcall fn ctx))))))
+  (handler-case
+      (dolist (phase phases ctx)
+        (let ((fn (cdr phase)))
+          (when fn (setf ctx (funcall fn ctx)))))
+    (sb-sys:interactive-interrupt ()
+      (warn "Interrupted — tearing down ~d process(es)"
+            (length (getf ctx :processes)))
+      (teardown-processes ctx))))
