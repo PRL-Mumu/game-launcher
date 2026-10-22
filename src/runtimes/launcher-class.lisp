@@ -38,7 +38,9 @@
        :name ,(launcher-name launcher))
     (when (launcher-exec launcher) ;; check when
       `(:exec ,(launcher-exec launcher)))
-    (profile-slot->form (launcher-profile launcher))))
+    (profile-slot->form (launcher-profile launcher))
+    (when (launcher-phases launcher)
+      `(:phases ,(launcher-phases launcher)))))
 
 (defmethod launcher-end ((launcher launcher))
   "Terminate the launcher. Default implementation does nothing.

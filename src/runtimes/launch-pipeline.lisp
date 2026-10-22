@@ -75,6 +75,27 @@
         do (format stream "  ~2d. ~a ~:[(anchor)~;~:*-> ~a~]~%"
                    i name fn)))
 
+(defmethod resolve-launcher-log ((l launcher))
+  (let ((path (merge-pathnames
+               (format nil "game-launcher/~X.~(~A~).log"
+                       (sb-kernel:get-lisp-obj-address l)
+                       (launcher-runtime l))
+               (uiop:xdg-data-home))))
+    (ensure-directories-exist path)
+    (open path
+          :direction :output
+          :if-exists :append
+          :if-does-not-exist :create
+          :external-format :utf-8)))
+
+(defmethod standard-ctx ((l launcher))
+  (list :launcher l
+		  :exec (launcher-exec l)
+		  :env (build-environment (launcher-profile l))
+		  :log-path (resolve-launcher-log l)
+		  :process nil
+		  :processes nil))
+
 (defun run-command-async (ctx argv &key directory (wait nil) log-path)
   "Spawn ARGV in CTX's environment. If WAIT, block and check exit code.
    If LOG-PATH, redirect stdout/stderr there (append).
@@ -93,6 +114,8 @@
                   (sb-ext:run-program (first argv) (rest argv)
                                       :directory directory
                                       :environment (getf ctx :env)
+				      :output (getf ctx :log-path)
+				      :error (getf ctx :log-path)
                                       :search t
                                       :wait wait))))
     (when (and wait (not (zerop (sb-ext:process-exit-code proc))))
@@ -130,11 +153,11 @@
       (flush))
     (nreverse args)))
 
-(defun run-command (env argv)
+(defun run-command (ctx argv &key log-path)
   "Spawn ARGV with ENV, wait for completion"
   (sb-ext:run-program (first argv) (rest argv)
-		      :environment env
-		      :output *standard-output*
+		      :environment (getf ctx :env)
+		      :output (or log-path (getf ctx :log-path))
 		      :search t
 		      :wait t))
 

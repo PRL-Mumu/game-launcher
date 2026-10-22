@@ -4,35 +4,52 @@
 (defclass rpgmaker-linux-launcher (launcher)
   ())
 
-(defun make-rpgmaker-linux-launcher (&key name profile exec)
+(defun make-rpgmaker-linux-launcher (&key name profile exec phases)
   "Create a launcher: an executable-launcher on Windows, an
 rpgmaker-linux-launcher on Unix."
   (cond
-    ((uiop:os-windows-p)
-     (make-instance 'executable-launcher
-                    :name name
-                    :profile profile
-                    :exec exec
-                    :args nil))
-    ((uiop:os-unix-p)
-     (make-instance 'rpgmaker-linux-launcher
-                    :name name
-                    :profile profile
-                    :exec exec))))
+   ((uiop:os-windows-p)
+    (make-instance 'executable-launcher
+		   :name name
+		   :profile profile
+		   :exec exec
+		   :phases phases))
+   ((uiop:os-unix-p)
+    (make-instance 'rpgmaker-linux-launcher
+                   :name name
+                   :profile profile
+                   :exec exec
+		   :phases phases))))
 
-(defmethod launch ((launcher rpgmaker-linux-launcher))
-  (let* ((exe (pathname (launcher-exec launcher)))
-	 (dir (pathname-directory-pathname exe)))
-    (sb-ext:run-program
-      "rpgmaker-linux"
-      (list (namestring exe))
-      :directory dir
-      :environment (build-environment (launcher-profile launcher))
-      :search t
-      :output *standard-output*
-      :wait nil)))
+(defun rpgmaker-linux-exec-phase (ctx)
+  (let ((proc
+	 (sb-ext:run-program
+	  "rpgmaker-linux"
+	  (list (getf ctx :exec))
+	  :environment (getf ctx :env)
+	  :directory (pathname-directory-pathname (getf ctx :exec))
+	  :search t
+	  :output (or (getf ctx :log-path) *standard-output*)
+	  :wait t)))
+    (setf (getf ctx :process) proc)
+    ctx))
+
+(defparameter *rpgmaker-linux-pipeline*
+	      '((exec . rpgmaker-linux-exec-phase)
+		(teardown . teardown-processes)))
+
+(defmethod launch ((l rpgmaker-linux-launcher))
+	   (run-pipeline
+	    (apply-phase-clauses *rpgmaker-linux-pipeline*
+				 (launcher-phases l))
+	    (list :launcher l
+		  :exec (launcher-exec l)
+		  :env (build-environment (launcher-profile l))
+		  :log-path (resolve-launcher-log l)
+		  :process nil
+		  :processes nil)))
 
 (define-launcher-runtime  ;; macro
-  rpgmaker 
-  rpgmaker-linux-launcher 
-  make-rpgmaker-linux-launcher)
+ rpgmaker
+ rpgmaker-linux-launcher
+ make-rpgmaker-linux-launcher)

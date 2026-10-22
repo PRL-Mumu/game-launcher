@@ -1,15 +1,9 @@
 (in-package #:game-launcher)
 
-;; ----------------------------------------------------------------------
-;;  Browser launcher class
-;; ----------------------------------------------------------------------
 (defclass browser-launcher (launcher)
   ((url
     :initarg :url
     :accessor launcher-url)
-   (args
-    :initarg :args
-    :accessor launcher-args)
    (lutris-id
     :initarg :lutris-id
     :initform nil
@@ -21,70 +15,33 @@
                  :name name
                  :profile profile
                  :url (or exec url)
-		 :exec nil
-                 :args args
+		 :exec nil ;; write url instead of exec
                  :lutris-id lutris-id))
 
-;; ----------------------------------------------------------------------
-;;  Launch – start the browser process
-;; ----------------------------------------------------------------------
-(defmethod launch ((launcher browser-launcher))
-  (let* ((exe   "xdg-open")
-         (url   (launcher-url launcher))
-         (full-args (append (launcher-args launcher) (list url))))
-    (with-open-file (log "/tmp/game-launcher.browser.log"
-                         :direction :output
-                         :if-exists :append
-                         :if-does-not-exist :create)
-      (sb-ext:run-program
-        (namestring exe)
-        full-args
-        :environment (build-environment (launcher-profile launcher))
-        :search t
-        :output log
-        :error  log
-        :wait nil))))
+(defun browser-exec (ctx)
+  (sb-ext:run-program
+   "xdg-open"
+   `,(launcher-url (getf ctx :launcher))
+   :environment (getf ctx :env)
+   :search t
+   :wait nil ;; dont wait for browser
+   ))
 
-;; ----------------------------------------------------------------------
-;;  Convert launcher to a form (for serialization, etc.)
-;; ----------------------------------------------------------------------
+(defparameter browser-pipeline
+  '((exec . browser-exec)))
+
+(defmethod launch ((l browser-launcher))
+  (run-pipeline
+   (apply-phase-clauses *browser-pipeline* (launcher-phases l))
+   (standard-ctx l)))
+
 (defmethod launcher->form ((launcher browser-launcher))
   (append (call-next-method)
           (when (launcher-url launcher)
             `(:url ,(launcher-url launcher)))
-          (when (launcher-args launcher)
-            `(:args ,(launcher-args launcher)))
           (when (launcher-lutris-id launcher)
             `(:lutris-id ,(launcher-lutris-id launcher)))))
 
-;; ----------------------------------------------------------------------
-;;  End of launcher lifecycle
-;; ----------------------------------------------------------------------
-(defmethod launcher-end ((launcher browser-launcher))
-  (format t "Browser launcher thread ENDED~%")
-  (kill launcher)
-  nil)
-
-;; ----------------------------------------------------------------------
-;;  Status reporting
-;; ----------------------------------------------------------------------
-(defmethod status ((launcher browser-launcher)
-                   &optional (stream *standard-output*))
-  (format stream "NAME: ~A~%" (launcher-name launcher))
-  (format stream "ENV : ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "URL : ~A~%" (launcher-url launcher))
-  (format stream "ARGS: ~A~%" (launcher-args launcher)))
-
-;; ----------------------------------------------------------------------
-;;  Example of a basic profile for browsers (optional)
-;; ----------------------------------------------------------------------
-(defparameter *browser-basic-profile*
-  '(("MOZ_DISABLE_OOP" "1")   ; example for Firefox
-    ("CHROME_NO_SANDBOX" "1")))
-
-;; ----------------------------------------------------------------------
-;;  Register the new runtime with the framework
-;; ----------------------------------------------------------------------
 (define-launcher-runtime
   browser
   browser-launcher

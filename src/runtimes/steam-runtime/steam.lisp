@@ -107,7 +107,7 @@
 				   "libraryfolders" "0" "apps"))
 	  do (steam-local-import steam-id path))))
 
-(game-launcher::export-runtime-symbol-into-core
+(game-launcher:export-runtime-symbol-into-core
  'steam-app-id-p
  'steam-app-id-from-url
  'steam-app-name

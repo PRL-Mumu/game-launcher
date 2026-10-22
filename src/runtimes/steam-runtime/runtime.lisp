@@ -3,32 +3,33 @@
 (defclass steam-launcher (launcher)
   ())
 
-(defun make-steam-launcher (&key name profile exec)
-  (let ((launcher
+(defun make-steam-launcher (&key name profile exec phases)
 	  (make-instance 'steam-launcher
 			 :name name
 			 :profile profile
-			 :exec exec)))
-    launcher))
+			 :exec exec
+			 :phases phases))
 
-(defmethod launch ((launcher steam-launcher))
-    (sb-ext:run-program
-      "steam"
-      (list (launcher-exec launcher))
-      :environment (build-environment (launcher-profile launcher))
-      :search t
-      :output *standard-output*
-      :wait nil))
 
-(defmethod status ((launcher steam-launcher)
-		   &optional (stream *standard-output*))
-  (format stream "NAME: ~A~%" (launcher-name launcher))
-  (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "EXEC: ~A~%" (launcher-exec launcher)))
+(defun steam-exec (ctx)
+  (setf (getf ctx :process)
+	(sb-ext:run-program
+	 "steam"
+	 (list (getf ctx :exec))
+	 :environment (getf ctx :env)
+	 :search t
+	 :wait nil))) ;; dont wait for steam
 
+(defparameter *steam-pipeline*
+  '((exec . steam-exec)))
+
+(defmethod launch ((l steam-launcher))
+  (run-pipeline
+   (apply-phase-clause *steam-pipeline* (launcher-phases l))
+   (standard-ctx l)))
 
 (define-launcher-runtime
-    steam
+  steam
   steam-launcher
   make-steam-launcher)
 

@@ -3,28 +3,37 @@
 (defclass easyrpg-player-launcher (launcher)
   ())
 
-(defun make-easyrpg-player-launcher (&key name profile exec)
-  (let ((launcher
-	  (make-instance 'easyrpg-player-launcher
-			 :name name
-			 :profile profile
-			 :exec exec)))
-    launcher))
+(defun make-easyrpg-player-launcher (&key name profile exec phases)
+	(make-instance 'easyrpg-player-launcher
+		       :name name
+		       :profile profile
+		       :exec exec
+		       :phases phases))
 
-(defmethod launch ((launcher easyrpg-player-launcher))
-    (sb-ext:run-program
-      "easyrpg-player"
-      (list ".")
-      :directory (uiop:pathname-directory-pathname (pathname (launcher-exec launcher)))
-      :environment (build-environment (launcher-profile launcher))
-      :search t
-      :output *standard-output*
-      :wait nil))
+(defun easyrpg-player-exec-phase (ctx)
+  (let ((proc
+	 (sb-ext:run-program
+	  "easyrpg-player"
+	  (list (getf ctx :exec))
+	  :environment (getf ctx :env)
+	  :directory (pathname-directory-pathname (getf ctx :exec))
+	  :search t
+	  :output (or (getf ctx :log-path) *standard-output*)
+	  :wait t)))
+    (setf (getf ctx :process) proc)
+    ctx))
 
-(defmethod status ((launcher easyrpg-player-launcher)
-		   &optional (stream *standard-output*))
-  (format stream "NAME: ~A~%" (launcher-name launcher))
-  (format stream "ENV: ~A~%" (profile-env (launcher-profile launcher)))
-  (format stream "EXEC: ~A~%" (launcher-exec launcher)))
+(defparameter *easyrpg-player-pipeline*
+	      '((exec . easyrpg-player-exec-phase)
+		(teardown . teardown-processes)))
 
-(define-launcher-runtime easyrpg-player easyrpg-player-launcher make-easyrpg-player-launcher)
+(defmethod launch ((l easyrpg-player-launcher))
+	   (run-pipeline
+	    (apply-phase-clauses *easyrpg-player-pipeline*
+				 (launcher-phases l))
+	    (standard-ctx l)))
+
+(define-launcher-runtime
+  easyrpg-player
+  easyrpg-player-launcher
+  make-easyrpg-player-launcher)

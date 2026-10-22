@@ -4,24 +4,34 @@
   ())
 
 (defun make-xsystem4-launcher (&key name profile exec)
-  (let ((launcher
 	  (make-instance 'xsystem4-launcher
 			 :name name
 			 :profile profile
-			 :exec exec)))
-    launcher))
+			 :exec exec))
 
-(defmethod launch ((launcher xsystem4-launcher))
-    (sb-ext:run-program
-      "xsystem4"
-      (list ".")
-      :directory (pathname-directory-pathname (pathname (launcher-exec launcher)))
-      :environment (build-environment (launcher-profile launcher))
-      :search t
-      :output *standard-output*
-      :wait nil))
+(defun xsystem4-exec (ctx)
+  (setf (getf ctx :process)
+	(sb-ext:run-program
+	 "xsystem4"
+	 `(getf ctx :exec)
+	 :environment (getf ctx :env)
+	 :directory (pathname-directory-pathname (getf :ctx :exec))
+	 :search t
+	 :output (or (getf ctx :log-path) *standard-output*)
+	 :wait t)))
 
-(define-launcher-runtime 
-  xsystem4 
+(defparameter *xsystem4-launch-pipeline*
+  '((pre  . nil)
+    (exec . xsystem4-exec)
+    (post . nil)
+    (teardown . teardown-processes)))
+
+(defmethod launch ((l xsystem4-launcher))
+  (run-pipeline
+   (apply-phase-clause *xsystem4-launch-pipeline* (launcher-phases l))
+   (standard-ctx l)))
+
+(define-launcher-runtime
+  xsystem4
   xsystem4-launcher
   make-xsystem4-launcher)
