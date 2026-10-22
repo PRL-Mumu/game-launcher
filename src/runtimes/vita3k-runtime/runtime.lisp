@@ -17,14 +17,15 @@
 	 (list "-r" (getf ctx :exec))
 	 :environment (getf ctx :env)
 	 :search t
-	 :wait nil))) ;; dont wait for emulator
+	 :wait nil))  ;; dont wait for emulator
+  ctx)
 
 (defparameter *vita3k-pipeline*
   '((exec . vita3k-exec)))
 
 (defmethod launch ((l vita3k-launcher))
   (run-pipeline
-   (apply-phase-clause *vita3k-pipeline* (launcher-phases l))
+   (apply-phase-clauses *vita3k-pipeline* (launcher-phases l))
    (standard-ctx l)))
 
 (define-launcher-runtime

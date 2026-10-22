@@ -9,25 +9,26 @@
     :initform nil
     :accessor launcher-lutris-id)))
 
-(defun make-browser-launcher (&key name profile exec url args lutris-id)
-  "Create a launcher that starts a browser (EXEC) on URL with optional ARGS."
+(defun make-browser-launcher (&key name profile exec url lutris-id phases)
+  "Create a launcher that starts a browser (EXEC) on URL."
   (make-instance 'browser-launcher
                  :name name
                  :profile profile
                  :url (or exec url)
 		 :exec nil ;; write url instead of exec
-                 :lutris-id lutris-id))
+                 :lutris-id lutris-id
+		 :phases phases))
 
 (defun browser-exec (ctx)
   (sb-ext:run-program
    "xdg-open"
-   `,(launcher-url (getf ctx :launcher))
+   (list (launcher-url (getf ctx :launcher)))
    :environment (getf ctx :env)
    :search t
    :wait nil ;; dont wait for browser
    ))
 
-(defparameter browser-pipeline
+(defparameter *browser-pipeline*
   '((exec . browser-exec)))
 
 (defmethod launch ((l browser-launcher))

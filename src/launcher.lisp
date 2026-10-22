@@ -16,9 +16,13 @@
   (loop for launcher being the hash-values of *unknown-launchers*
 	collect launcher))
 
-(defun select-launcher (query)
-  "Fuzzy-match QUERY against launcher names; return best match or NIL."
+(defun select-launcher-name (query)
+    "Fuzzy-match QUERY against launcher names; return best match or NIL."
   (first (fuzzy-match:fuzzy-match query (launcher-names))))
+
+(defun select-launcher (query)
+  "Fuzzy-match QUERY against launcher names; return launcher for best match or NIL."
+  (find-launcher (select-launcher-name query)))
 
 (defun remove-select-launcher (query)
   "Fuzzy-match QUERY and remove the best-matching launcher, persistently."

@@ -42,12 +42,7 @@ rpgmaker-linux-launcher on Unix."
 	   (run-pipeline
 	    (apply-phase-clauses *rpgmaker-linux-pipeline*
 				 (launcher-phases l))
-	    (list :launcher l
-		  :exec (launcher-exec l)
-		  :env (build-environment (launcher-profile l))
-		  :log-path (resolve-launcher-log l)
-		  :process nil
-		  :processes nil)))
+	    (standard-ctx l)))
 
 (define-launcher-runtime  ;; macro
  rpgmaker

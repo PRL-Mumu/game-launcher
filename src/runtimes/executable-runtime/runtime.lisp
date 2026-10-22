@@ -20,7 +20,8 @@
 	 :directory (pathname-directory-pathname (getf ctx :exec))
 	 :search t
 	 :output (or (getf ctx :log-path) *standard-output*)
-	 :wait t)))
+	 :wait t))
+  ctx)
 
 (defparameter *executable-launch-pipeline*
   '((pre  . nil)
@@ -32,7 +33,7 @@
   (run-pipeline
    (apply-phase-clauses *executable-launch-pipeline* (launcher-phases l))
    `(,@(standard-ctx l)
-     :args (or (launcher-args l) '()))))
+     :args ,(or (launcher-args l) '()))))
 
 (defmethod launcher->form ((launcher executable-launcher))
   (append (call-next-method)
