@@ -23,23 +23,6 @@ exec ros -Q -- $0 "$@"
 ;; helper functions
 
 
-(defun backend-fn (name)
-  "Return the function named NAME in :game-launcher or :game-launcher.steam, or NIL."
-  (let ((sym (or (find-symbol (string-upcase name) :game-launcher)
-		 (find-symbol (string-upcase name) :game-launcher.steam))))
-    (and sym (fboundp sym) (symbol-function sym))))
-
-(defun call-backend (name &rest args)
-  "Call a dynamically loaded backend function by name."
-  (let ((fn (backend-fn name)))
-    (unless fn
-      (error "Backend function ~A is not available." name))
-    (apply fn args)))
-
-(defun ensure-runtime (name)
-  "Ensure the specified runtime backend file is loaded."
-  (game-launcher:load-runtime (game-launcher:runtime-path) name))
-
 ;;; ----------------------------------------------------------------------
 ;;; Dynamic Backend Helpers (mirroring CLI backend loader)
 ;;; ----------------------------------------------------------------------
