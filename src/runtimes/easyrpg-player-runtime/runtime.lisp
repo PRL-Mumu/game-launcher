@@ -27,11 +27,7 @@
 	      '((exec . easyrpg-player-exec-phase)
 		(teardown . teardown-processes)))
 
-(defmethod launch ((l easyrpg-player-launcher))
-	   (run-pipeline
-	    (apply-phase-clauses *easyrpg-player-pipeline*
-				 (launcher-phases l))
-	    (standard-ctx l)))
+(define-standard-pipeline-launch easyrpg-player-launcher *easyrpg-player-pipeline*)
 
 (define-launcher-runtime
   easyrpg-player

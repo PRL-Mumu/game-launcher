@@ -10,7 +10,7 @@
 		 :exec exec
 		 :phases phases))
 
-(defun vite3k-exec (ctx)
+(defun vita3k-exec (ctx)
   (setf (getf ctx :process)
 	(sb-ext:run-program
 	 "vita3k"

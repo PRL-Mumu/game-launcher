@@ -20,11 +20,14 @@
   "Import a game from a .desktop file"
   (let ((data (parse-desktop-file path)))
     (when (and (getf data :name) (getf data :exec))
-      (register-launcher-instance
-	(let ((exec (split-shell-args (getf data :exec))))
-	  (make-execuable-launcher 
-	    :name (getf data :name)
-	    :exec (first exec)
-	    :args (rest exec)))))))
+      (let* ((exec (split-shell-args (getf data :exec)))
+	     (launcher (make-launcher 'exec
+				      :name (getf data :name)
+				      :exec (getf data :exec)
+				      :args (getf data :args))))
+	(when launcher
+	  (register-launcher-instance launcher)
+	  (write-launchers-to-file (store-path))
+	  launcher)))))
 
 

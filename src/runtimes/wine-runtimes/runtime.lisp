@@ -54,7 +54,7 @@
   (run-pipeline
    (apply-phase-clauses *wine-launch-pipeline* (launcher-phases l))
    `(,@(standard-ctx l)
-     :args (or (launcher-args l) '()))))
+     :args ,(or (launcher-args l) '()))))
 
 (defmethod launcher->form ((launcher wine-launcher))
   (append (call-next-method)

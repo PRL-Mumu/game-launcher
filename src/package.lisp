@@ -10,6 +10,8 @@
   (:export
     #:assoc-path
     #:main
+    #:launcher
+    #:launcherp
     #:make-launcher
     #:with-launcher-session
     #:launcher-names
@@ -27,6 +29,13 @@
     #:run-launcher-thread
     #:launch
     #:launcher-name
+    #:launcher-runtime
+    #:launcher-exec
+    #:launcher-profile
+    #:unknown-launcher-list
+    #:write-launchers-to-file
+    #:search-launcher-list
+    #:select-launcher-name
     #:load-runtime
     #:prompt-launcher-list
     #:prompt-launcher-remove-list

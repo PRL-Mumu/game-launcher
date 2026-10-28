@@ -130,7 +130,12 @@
   "Ensure the runtime file that registers RUNTIME-SYMBOL under DIR is
   loaded.  Re-scans DIR once on a miss, so runtimes added after startup
   are still found.  Returns the pathname, or NIL if no such runtime."
-  (labels ((lookup () (gethash runtime-symbol *runtime-index*)))
+  (labels ((lookup () 
+		   (or (gethash runtime-symbol *runtime-index*)
+		       (loop for sym being the hash-keys of *runtime-index*
+			     using (hash-value file)
+			     when (string-equal (symbol-name sym) (symbol-name runtime-symbol))
+			     return file))))
     (let ((file (or (lookup) (progn (index-runtimes dir) (lookup)))))
       (when file
 	(unless (gethash file *loaded-runtime-files*)

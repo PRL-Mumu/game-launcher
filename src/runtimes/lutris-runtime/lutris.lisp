@@ -125,8 +125,6 @@
 		 (make-browser-launcher
 		  :name (lutris-game-name game)
 		  :url (scalar->string link)
-		  :args (normalize-args
-			 (yaml-get game-block "args"))
 		  :profile (yaml-env->profile yaml)
 		  :lutris-id (lutris-game-id game))))
 	     (warn "skipping ~A: browser game, no link in yaml"

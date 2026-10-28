@@ -6,47 +6,573 @@ exec ros -Q -- $0 "$@"
 
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:game-launcher :ltk) :silent t)
-  )
+  #+quicklisp(ql:quickload '(:game-launcher 
+			      :ltk 
+			      :cl-json 
+			      :dexador 
+			      :cl-yaml 
+			      :cl-dbi
+			      :dbd-sqlite3) :silent t))
 
-(in-package :ltk)
-(defun main ()
-  (let ((plusheight 30)) 
+(defpackage :game-launcher-gui
+  (:use :cl :ltk)
+  (:export #:main))
+
+(in-package :game-launcher-gui)
+
+;; helper functions
+
+
+(defun backend-fn (name)
+  "Return the function named NAME in :game-launcher or :game-launcher.steam, or NIL."
+  (let ((sym (or (find-symbol (string-upcase name) :game-launcher)
+		 (find-symbol (string-upcase name) :game-launcher.steam))))
+    (and sym (fboundp sym) (symbol-function sym))))
+
+(defun call-backend (name &rest args)
+  "Call a dynamically loaded backend function by name."
+  (let ((fn (backend-fn name)))
+    (unless fn
+      (error "Backend function ~A is not available." name))
+    (apply fn args)))
+
+(defun ensure-runtime (name)
+  "Ensure the specified runtime backend file is loaded."
+  (game-launcher:load-runtime (game-launcher:runtime-path) name))
+
+;;; ----------------------------------------------------------------------
+;;; Dynamic Backend Helpers (mirroring CLI backend loader)
+;;; ----------------------------------------------------------------------
+
+(defun backend-fn (name)
+  "Return the function named NAME in :game-launcher or :game-launcher.steam, or NIL."
+  (let ((sym (or (find-symbol (string-upcase name) :game-launcher)
+		 (find-symbol (string-upcase name) :game-launcher.steam))))
+    (and sym (fboundp sym) (symbol-function sym))))
+
+(defun call-backend (name &rest args)
+  "Call a dynamically loaded backend function by name."
+  (let ((fn (backend-fn name)))
+    (unless fn
+      (error "Backend function ~A is not available." name))
+    (apply fn args)))
+
+(defun ensure-runtime (name)
+  "Ensure the specified runtime backend file is loaded."
+  (game-launcher:load-runtime (game-launcher:runtime-path) name))
+
+;;; ----------------------------------------------------------------------
+;;; Launcher Visual Presentation Helpers
+;;; ----------------------------------------------------------------------
+
+(defun format-runtime-badge (runtime-sym)
+  "Return formatted badge string for RUNTIME-SYM."
+  (format nil "[~A]" (string-upcase (symbol-name (or runtime-sym 'unknown)))))
+
+(defun truncate-string (str max-len)
+  "Truncate STR to MAX-LEN characters if needed, adding ellipsis."
+  (if (and str (> (length str) max-len))
+    (concatenate 'string (subseq str 0 (max 0 (- max-len 3))) "...")
+    (or str "")))
+
+(defun launcher-target-description (launcher)
+  "Return a short human-readable target string for LAUNCHER."
+  (cond
+    ((null launcher) "")
+    ((typep launcher 'game-launcher:launcher)
+     (let ((exec (game-launcher:launcher-exec launcher)))
+       (if (and exec (plusp (length exec)))
+	 exec
+	 (format nil "[~A]" (game-launcher:launcher-runtime launcher)))))
+    ((typep launcher 'game-launcher::unknown-launcher)
+     (format nil "Raw: ~S" (game-launcher::form-data launcher)))
+    (t "")))
+
+(defun enable-mousewheel-scrolling (canvas inner)
+  "Bind mouse wheel events to smoothly scroll CANVAS in Tk."
+  (let ((c (widget-path canvas)))
+    (dolist (w (list c (widget-path inner)))
+      (format-wish "bind ~a <Button-4> [list ~a yview scroll -3 units]" w c)
+      (format-wish "bind ~a <Button-5> [list ~a yview scroll 3 units]" w c)
+      (format-wish "bind ~a <MouseWheel> {if {%D > 0} {~a yview scroll -3 units} else {~a yview scroll 3 units}}" w c c))))
+
+;;; ----------------------------------------------------------------------
+;;; Import Dialogs (CLI-parity feature set)
+;;; ----------------------------------------------------------------------
+
+(defun gui-import-desktop-file (on-imported-cb set-status-fn)
+  "Select and import a .desktop file, matching 'game-launcher --import desktop'."
+  (let ((path (get-open-file :title "Select .desktop File to Import"
+			     :filetypes '(("Desktop Applications" "*.desktop")
+					  ("All Files" "*")))))
+    (when (and path (plusp (length path)))
+      (ensure-runtime 'desktop)
+      (handler-case
+	(let ((launcher (call-backend "import-desktop-file" path)))
+	  (if launcher
+	    (progn
+	      (funcall set-status-fn (format nil "Imported ~S from desktop file."
+					     (game-launcher:launcher-name launcher)))
+	      (funcall on-imported-cb))
+	    (funcall set-status-fn (format nil "Could not extract game from ~A" path))))
+	(error (e)
+	       (funcall set-status-fn (format nil "Desktop import error: ~A" e)))))))
+
+(defun show-steam-import-dialog (on-imported-cb set-status-fn)
+  "Dialog for Steam import options: local library scan or App ID/URL."
+  (let* ((top (make-instance 'toplevel :title "Import from Steam"))
+	 (main-f (make-instance 'frame :master top)))
+    (pack main-f :fill :both :expand t :padx 15 :pady 15)
+
+    (let ((hdr (make-instance 'label :master main-f
+			      :text "Steam Importer"
+			      :font "Helvetica 13 bold")))
+      (pack hdr :side :top :anchor :w :pady 5))
+
+    ;; Section 1: Local Steam Library
+    (let ((group1 (make-instance 'labelframe :master main-f :text " Local Steam Library ")))
+      (pack group1 :side :top :fill :x :pady 6)
+      (let ((lbl (make-instance 'label :master group1
+				:text "Scan local Steam library folders and import all installed games."
+				:font "Helvetica 10")))
+	(pack lbl :side :top :anchor :w :padx 8 :pady 4))
+      (let ((btn (make-instance 'button :master group1
+				:text "Import All Local Steam Games"
+				:command
+				(lambda ()
+				  (ensure-runtime 'steam)
+				  (funcall set-status-fn "Scanning local Steam library...")
+				  (handler-case
+				    (progn
+				      (call-backend "steam-local-import-all")
+				      (game-launcher:write-launchers-to-file (game-launcher:store-path))
+				      (funcall set-status-fn "Local Steam games successfully imported.")
+				      (funcall on-imported-cb)
+				      (destroy top))
+				    (error (e)
+					   (funcall set-status-fn (format nil "Steam import error: ~A" e))))))))
+	(pack btn :side :top :anchor :w :padx 8 :pady 6)))
+
+    ;; Section 2: By App ID or Store URL
+    (let ((group2 (make-instance 'labelframe :master main-f :text " Steam App ID or Store URL ")))
+      (pack group2 :side :top :fill :x :pady 6)
+      (let ((lbl (make-instance 'label :master group2
+				:text "Enter Steam App ID (e.g. 2135150) or Store page URL:"
+				:font "Helvetica 10")))
+	(pack lbl :side :top :anchor :w :padx 8 :pady 4))
+      (let* ((row (make-instance 'frame :master group2))
+	     (entry (make-instance 'entry :master row))
+	     (btn (make-instance 'button :master row
+				 :text "Import"
+				 :command
+				 (lambda ()
+				   (let ((val (string-trim " " (text entry))))
+				     (when (plusp (length val))
+				       (ensure-runtime 'steam)
+				       (funcall set-status-fn (format nil "Importing Steam game ~A..." val))
+				       (handler-case
+					 (progn
+					   (call-backend "import-steam-id" val)
+					   (game-launcher:write-launchers-to-file (game-launcher:store-path))
+					   (funcall set-status-fn (format nil "Imported Steam game ~A." val))
+					   (funcall on-imported-cb)
+					   (destroy top))
+					 (error (e)
+						(funcall set-status-fn (format nil "Steam import error: ~A" e))))))))))
+	(pack row :side :top :fill :x :padx 8 :pady 6)
+	(pack entry :side :left :fill :x :expand t :padx 4)
+	(pack btn :side :right :padx 4)))
+
+    ;; Close button
+    (let ((btn-cancel (make-instance 'button :master main-f
+				     :text "Close"
+				     :command (lambda () (destroy top)))))
+      (pack btn-cancel :side :bottom :anchor :e :pady 6))))
+
+(defun show-lutris-import-dialog (on-imported-cb set-status-fn)
+  "Dialog for Lutris import options: all games or specific game name."
+  (let* ((top (make-instance 'toplevel :title "Import from Lutris"))
+	 (main-f (make-instance 'frame :master top)))
+    (pack main-f :fill :both :expand t :padx 15 :pady 15)
+
+    (let ((hdr (make-instance 'label :master main-f
+			      :text "Lutris Importer"
+			      :font "Helvetica 13 bold")))
+      (pack hdr :side :top :anchor :w :pady 5))
+
+    ;; Section 1: All Lutris Games
+    (let ((group1 (make-instance 'labelframe :master main-f :text " All Installed Games ")))
+      (pack group1 :side :top :fill :x :pady 6)
+      (let ((lbl (make-instance 'label :master group1
+				:text "Import all installed games from your Lutris SQLite database."
+				:font "Helvetica 10")))
+	(pack lbl :side :top :anchor :w :padx 8 :pady 4))
+      (let ((btn (make-instance 'button :master group1
+				:text "Import All Lutris Games"
+				:command
+				(lambda ()
+				  (ensure-runtime 'lutris)
+				  (funcall set-status-fn "Reading Lutris database...")
+				  (handler-case
+				    (progn
+				      (call-backend "import-all-lutris-games")
+				      (game-launcher:write-launchers-to-file (game-launcher:store-path))
+				      (funcall set-status-fn "All Lutris games imported.")
+				      (funcall on-imported-cb)
+				      (destroy top))
+				    (error (e)
+					   (funcall set-status-fn (format nil "Lutris import error: ~A" e))))))))
+	(pack btn :side :top :anchor :w :padx 8 :pady 6)))
+
+    ;; Section 2: By Name
+    (let ((group2 (make-instance 'labelframe :master main-f :text " Single Game by Name ")))
+      (pack group2 :side :top :fill :x :pady 6)
+      (let ((lbl (make-instance 'label :master group2
+				:text "Enter the exact name of the Lutris game:"
+				:font "Helvetica 10")))
+	(pack lbl :side :top :anchor :w :padx 8 :pady 4))
+      (let* ((row (make-instance 'frame :master group2))
+	     (entry (make-instance 'entry :master row))
+	     (btn (make-instance 'button :master row
+				 :text "Import"
+				 :command
+				 (lambda ()
+				   (let ((val (string-trim " " (text entry))))
+				     (when (plusp (length val))
+				       (ensure-runtime 'lutris)
+				       (funcall set-status-fn (format nil "Importing Lutris game ~A..." val))
+				       (handler-case
+					 (progn
+					   (call-backend "import-lutris-game" val)
+					   (game-launcher:write-launchers-to-file (game-launcher:store-path))
+					   (funcall set-status-fn (format nil "Imported Lutris game ~S." val))
+					   (funcall on-imported-cb)
+					   (destroy top))
+					 (error (e)
+						(funcall set-status-fn (format nil "Lutris import error: ~A" e))))))))))
+	(pack row :side :top :fill :x :padx 8 :pady 6)
+	(pack entry :side :left :fill :x :expand t :padx 4)
+	(pack btn :side :right :padx 4)))
+
+    ;; Close button
+    (let ((btn-cancel (make-instance 'button :master main-f
+				     :text "Close"
+				     :command (lambda () (destroy top)))))
+      (pack btn-cancel :side :bottom :anchor :e :pady 6))))
+
+(defun show-form-import-dialog (on-imported-cb set-status-fn)
+  "Dialog for importing a raw Lisp launcher form, matching 'game-launcher --import form'."
+  (let* ((top (make-instance 'toplevel :title "Import Launcher Form"))
+	 (main-f (make-instance 'frame :master top)))
+    (pack main-f :fill :both :expand t :padx 15 :pady 15)
+
+    (let ((hdr (make-instance 'label :master main-f
+			      :text "Import Lisp Launcher Form"
+			      :font "Helvetica 13 bold")))
+      (pack hdr :side :top :anchor :w :pady 5))
+
+    (let ((desc (make-instance 'label :master main-f
+			       :text "Enter or paste a launcher form (e.g. (EXEC :NAME \"My Game\" :EXEC \"/bin/game\")):"
+			       :font "Helvetica 10")))
+      (pack desc :side :top :anchor :w :pady 4))
+
+    (let* ((entry (make-instance 'entry :master main-f))
+	   (btn-row (make-instance 'frame :master main-f))
+	   (btn-import (make-instance 'button :master btn-row
+				      :text "Import Form"
+				      :command
+				      (lambda ()
+					(let ((raw (string-trim " " (text entry))))
+					  (if (zerop (length raw))
+					    (funcall set-status-fn "Error: empty form.")
+					    (handler-case
+					      (let* ((*read-eval* nil)
+						     (form (read-from-string raw)))
+						(game-launcher:import-launcher-form form)
+						(game-launcher:write-launchers-to-file (game-launcher:store-path))
+						(funcall set-status-fn "Imported launcher form successfully.")
+						(funcall on-imported-cb)
+						(destroy top))
+					      (error (e)
+						     (funcall set-status-fn (format nil "Invalid form: ~A" e)))))))))
+	   (btn-cancel (make-instance 'button :master btn-row
+				      :text "Cancel"
+				      :command (lambda () (destroy top)))))
+      (pack entry :side :top :fill :x :pady 8)
+      (pack btn-row :side :bottom :fill :x :pady 5)
+      (pack btn-cancel :side :right :padx 4)
+      (pack btn-import :side :right :padx 4))))
+
+;;; ----------------------------------------------------------------------
+;;; Main Tk GUI Client
+;;; ----------------------------------------------------------------------
+
+(defun main (&rest args)
+  (declare (ignore args))
   (game-launcher:initialize-launcher)
   (with-ltk ()
-	    (let ((launchers (game-launcher::launcher-list))
-		  (alt-color 0))
-	      (let ((frame (make-instance 'frame)))
-		(pack frame :fill :both :expand t)
+	    (wm-title *tk* "Game Launcher")
+	    (minsize *tk* 680 480)
 
-		(let ((title (make-instance 'label
-					    :master frame
-					    :text "GAME-LAUNCHER"
-					    :font "Helvetica 18")))
-		  (pack title :side :top))
+	    ;; Raise baseline font size for all standard widgets
+	    (format-wish "catch {font configure TkDefaultFont -size 11}")
+	    (format-wish "catch {font configure TkTextFont -size 11}")
+	    (format-wish "catch {font configure TkHeadingFont -size 14 -weight bold}")
 
-		(dolist (launcher launchers)
-		  (let* ((name (game-launcher::launcher-name launcher))
-			 (bg-color (if (evenp alt-color) "grey" "aliceblue"))
-			 (row (make-instance 'frame
-					     :master frame))
-			 (label (make-instance 'label
-					       :master row
-					       :text name
-					       :font "Helvetica 12"
-					       :background bg-color))
-			 (btn (make-instance 'button
-					     :master row
-					     :text "Launch"
-					     :command (lambda ()
-							(game-launcher::launch launcher)))))
-		    (pack row :side :top :fill :x :pady 0)
-		    (pack label :side :left :padx 4 :pady 1 :expand t :fill :x)
-		    (pack btn :side :right :padx 4 :pady 1))
-		  (incf plusheight 28)
-		  (incf alt-color)
-		  )))
-	    (let ((w 580) (h plusheight))
-	      (set-geometry *tk* w h (- (/ 1920 2) (/ w 2)) (- (/ 1080 2) (/ h 2))))
-	    )))
+	    ;; Window geometry
+	    (let* ((w 820)
+		   (h 640)
+		   (sw (or (ignore-errors (screen-width)) 1920))
+		   (sh (or (ignore-errors (screen-height)) 1080))
+		   (x (max 0 (floor (- sw w) 2)))
+		   (y (max 0 (floor (- sh h) 2))))
+	      (set-geometry *tk* w h x y))
+
+	    (let* ((root (make-instance 'frame))
+		   (header-frame (make-instance 'frame :master root))
+		   (toolbar-frame (make-instance 'frame :master root))
+		   (search-frame (make-instance 'frame :master root))
+		   (sf (make-instance 'scrolled-frame :master root))
+		   (status-bar (make-instance 'frame :master root))
+		   (status-label (make-instance 'label :master status-bar
+						:text "Ready"
+						:font "Helvetica 10"
+						:anchor :w))
+		   (count-label (make-instance 'label :master status-bar
+					       :text ""
+					       :font "Helvetica 10 bold"
+					       :anchor :e))
+		   (row-widgets '())
+		   (search-entry nil)
+		   (all-launchers '())
+		   (current-matches '()))
+
+	      (pack root :fill :both :expand t)
+
+	      ;; Status update helper
+	      (flet ((set-status (msg)
+				 (setf (text status-label) msg)))
+
+		;; Forward declaration of list refresh
+		(labels
+		  ((fetch-launchers ()
+				    (let ((known (sort (copy-list (game-launcher:launcher-list))
+						       #'string-lessp
+						       :key #'game-launcher:launcher-name))
+					  (unknown (game-launcher:unknown-launcher-list)))
+				      (append known unknown)))
+
+		   (launch-game (launcher)
+				(let ((name (if (typep launcher 'game-launcher:launcher)
+					      (game-launcher:launcher-name launcher)
+					      "Unknown Launcher")))
+				  (if (typep launcher 'game-launcher:launcher)
+				    (progn
+				      (set-status (format nil "Launching ~A in background..." name))
+				      (handler-case
+					(game-launcher:run-launcher-thread launcher)
+					(error (e)
+					       (set-status (format nil "Launch error for ~A: ~A" name e)))))
+				    (set-status (format nil "Cannot launch ~A: runtime unavailable." name)))))
+
+		   (remove-game (launcher)
+				(let* ((is-known (typep launcher 'game-launcher:launcher))
+				       (name (if is-known
+					       (game-launcher:launcher-name launcher)
+					       (game-launcher::form-name launcher))))
+				  (when (ask-yesno (format nil "Are you sure you want to remove~%~%\"~A\"~%~%from the launcher store?" name)
+						   :title "Confirm Removal")
+				    (handler-case
+				      (progn
+					(game-launcher:remove-launcher name)
+					(set-status (format nil "Removed ~S from launcher store." name))
+					(refresh-view))
+				      (error (e)
+					     (set-status (format nil "Remove error: ~A" e)))))))
+
+		   (populate-rows (launchers)
+				  ;; Destroy previous row widgets
+				  (dolist (w row-widgets)
+				    (destroy w))
+				  (setf row-widgets '())
+
+				  (let ((inner (interior sf)))
+				    (dolist (launcher launchers)
+				      (let* ((is-known (typep launcher 'game-launcher:launcher))
+					     (name (if is-known
+						     (game-launcher:launcher-name launcher)
+						     (game-launcher::form-name launcher)))
+					     (runtime-sym (if is-known
+							    (game-launcher:launcher-runtime launcher)
+							    'unknown))
+					     (badge-str (format-runtime-badge runtime-sym))
+					     (desc (truncate-string (launcher-target-description launcher) 75))
+					     (row-frame (make-instance 'frame :master inner
+								       :borderwidth 1
+								       :relief :groove
+								       :padding 3))
+					     (left-box (make-instance 'frame :master row-frame))
+					     (title-row (make-instance 'frame :master left-box))
+					     (badge (make-instance 'label :master title-row
+								   :text badge-str
+								   :font "Helvetica 11 bold"))
+					     (name-lbl (make-instance 'label :master title-row
+								      :text name
+								      :font "Helvetica 13 bold"))
+					     (desc-lbl (make-instance 'label :master left-box
+								      :text desc
+								      :font "Helvetica 10"))
+					     (btn-box (make-instance 'frame :master row-frame))
+					     (btn-launch (make-instance 'button :master btn-box
+									:text "Launch"
+									:command
+									(let ((l launcher))
+									  (lambda () (launch-game l)))))
+					     (btn-remove (make-instance 'button :master btn-box
+									:text "Remove"
+									:command
+									(let ((l launcher))
+									  (lambda () (remove-game l))))))
+					(pack row-frame :side :top :fill :x :padx 4 :pady 2)
+					(pack left-box :side :left :fill :x :expand t :padx 6 :pady 3)
+					(pack title-row :side :top :anchor :w)
+					(pack badge :side :left :padx 4)
+					(pack name-lbl :side :left :padx 4)
+					(when (plusp (length desc))
+					  (pack desc-lbl :side :top :anchor :w :padx 8 :pady 2))
+					(pack btn-box :side :right :padx 6 :pady 3)
+					(pack btn-launch :side :left :padx 3)
+					(pack btn-remove :side :left :padx 3)
+
+					(push row-frame row-widgets))))
+				  (reset-scroll sf))
+
+		   (filter-launchers (query)
+				     (let ((q (string-trim " " (or query ""))))
+				       (if (zerop (length q))
+					 all-launchers
+					 (let ((fuzzy-results (game-launcher:search-launcher-list q)))
+					   (if fuzzy-results
+					     fuzzy-results
+					     (remove-if-not (lambda (l)
+							      (let ((nm (if (typep l 'game-launcher:launcher)
+									  (game-launcher:launcher-name l)
+									  (game-launcher::form-name l))))
+								(search q nm :test #'char-equal)))
+							    all-launchers))))))
+
+		   (update-view-for-query ()
+		     (let* ((q (text search-entry))
+		   	 (matches (filter-launchers q)))
+		       (setf current-matches matches)
+		       (populate-rows matches)
+		       (setf (text count-label)
+		   	  (format nil "Showing ~D of ~D games"
+		   		  (length matches)
+		   		  (length all-launchers)))
+		       (focus search-entry)))
+
+		   (refresh-view ()
+				 (setf all-launchers (fetch-launchers))
+				 (update-view-for-query))
+
+		   (on-search-enter ()
+				    (if current-matches
+				      (launch-game (first current-matches))
+				      (set-status (format nil "No match for ~S." (text search-entry))))))
+
+		  ;; --- Header ---
+		  (pack header-frame :side :top :fill :x :padx 12 :pady 6)
+		  (let ((app-title (make-instance 'label :master header-frame
+						  :text "GAME LAUNCHER"
+						  :font "Helvetica 18 bold"))
+			(app-sub (make-instance 'label :master header-frame
+						:text "Common Lisp Game Runtime & Launcher Framework"
+						:font "Helvetica 10")))
+		    (pack app-title :side :top :anchor :w)
+		    (pack app-sub :side :top :anchor :w))
+
+		  ;; --- Toolbar (CLI feature equivalents) ---
+		  (pack toolbar-frame :side :top :fill :x :padx 10 :pady 4)
+		  (let ((lbl-import (make-instance 'label :master toolbar-frame
+						   :text "Import: "
+						   :font "Helvetica 10 bold"))
+			(btn-import-desktop (make-instance 'button :master toolbar-frame
+							   :text "+ .desktop"
+							   :command (lambda ()
+								      (gui-import-desktop-file
+									#'refresh-view
+									#'set-status))))
+			(btn-import-steam (make-instance 'button :master toolbar-frame
+							 :text "+ Steam"
+							 :command (lambda ()
+								    (show-steam-import-dialog
+								      #'refresh-view
+								      #'set-status))))
+			(btn-import-lutris (make-instance 'button :master toolbar-frame
+							  :text "+ Lutris"
+							  :command (lambda ()
+								     (show-lutris-import-dialog
+								       #'refresh-view
+								       #'set-status))))
+			(btn-import-form (make-instance 'button :master toolbar-frame
+							:text "+ Form"
+							:command (lambda ()
+								   (show-form-import-dialog
+								     #'refresh-view
+								     #'set-status))))
+			(btn-reload (make-instance 'button :master toolbar-frame
+						   :text "🔄 Reload Store"
+						   :command (lambda ()
+							      (game-launcher:initialize-launcher)
+							      (set-status "Reloaded launcher store from disk.")
+							      (refresh-view)))))
+		    (pack lbl-import :side :left :padx 3)
+		    (pack btn-import-desktop :side :left :padx 3)
+		    (pack btn-import-steam :side :left :padx 3)
+		    (pack btn-import-lutris :side :left :padx 3)
+		    (pack btn-import-form :side :left :padx 3)
+		    (pack btn-reload :side :right :padx 3))
+
+		  ;; --- Search Bar ---
+		  (pack search-frame :side :top :fill :x :padx 10 :pady 6)
+		  (let* ((search-lbl (make-instance 'label :master search-frame
+						    :text "Search:"
+						    :font "Helvetica 11 bold"))
+			 (entry (make-instance 'entry :master search-frame))
+			 (btn-clear (make-instance 'button :master search-frame
+						   :text "✕ Clear"
+						   :command (lambda ()
+							      (setf (text entry) "")
+							      (update-view-for-query)))))
+		    (setf search-entry entry)
+		    (pack search-lbl :side :left :padx 4)
+		    (pack entry :side :left :fill :x :expand t :padx 4)
+		    (pack btn-clear :side :left :padx 4)
+
+		    ;; Bind live filtering and Enter key
+		    (bind entry "<KeyRelease>"
+			  (lambda (event)
+			    (declare (ignore event))
+			    (update-view-for-query)))
+		    (bind entry "<Return>"
+			  (lambda (event)
+			    (declare (ignore event))
+			    (on-search-enter))))
+
+		  ;; --- Game List (Scrollable) ---
+		  (pack sf :side :top :fill :both :expand t :padx 10 :pady 4)
+		  (enable-mousewheel-scrolling (canvas sf) (interior sf))
+
+		  ;; --- Status Bar ---
+		  (pack status-bar :side :bottom :fill :x :padx 10 :pady 4)
+		  (pack status-label :side :left :fill :x :expand t)
+		  (pack count-label :side :right)
+
+		  ;; Initial render
+		  (refresh-view))))))
+
+(defun cl-user::main (&rest args)
+  (apply #'main args))
+
 ;;; vim: set ft=lisp lisp:

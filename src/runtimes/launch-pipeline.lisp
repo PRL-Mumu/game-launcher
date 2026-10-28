@@ -189,3 +189,10 @@
       (warn "Interrupted — tearing down ~d process(es)"
             (length (getf ctx :processes)))
       (teardown-processes ctx))))
+
+(defmacro define-standard-pipeline-launch (class pipeline)
+  "usual way of defining pipeline launch unless you need to customize the ctx list"
+  `(defmethod launch ((l ,class))
+     (run-pipeline
+      (apply-phase-clauses ,pipeline (launcher-phases l))
+      (standard-ctx l))))
