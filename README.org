@@ -245,6 +245,15 @@ profile once, every launcher picks it up.
 
   - [ ] Expand support for different game engines, compatibility layers, and external runtime systems.
 
+- [ ] Store file trees
+
+  - [ ] Atomic store updates. store file changes would prepare a backup before writing any changes
+
+  - [ ] Describe a store file tree in store files
+
+  - [ ] Store file tree can contain custom lisp code
+
+
 * Design Goals
 
 	- Keep the core framework small.
