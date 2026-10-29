@@ -9,7 +9,7 @@
     :initform nil
     :accessor launcher-lutris-id)))
 
-(defun make-browser-launcher (&key name profile exec url lutris-id phases)
+(defun make-browser-launcher (&key name profile exec url lutris-id phases tags)
   "Create a launcher that starts a browser (EXEC) on URL."
   (make-instance 'browser-launcher
                  :name name
@@ -17,7 +17,8 @@
                  :url (or exec url)
 		 :exec nil ;; write url instead of exec
                  :lutris-id lutris-id
-		 :phases phases))
+		 :phases phases
+		 :tags tags))
 
 (defun browser-exec (ctx)
   (sb-ext:run-program

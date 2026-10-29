@@ -3,13 +3,6 @@
 (defclass vita3k-launcher (launcher)
   ())
 
-(defun make-vita3k-launcher (&key name profile exec phases)
-  (make-instance 'vita3k-launcher
-		 :name name
-		 :profile profile
-		 :exec exec
-		 :phases phases))
-
 (defun vita3k-exec (ctx)
   (setf (getf ctx :process)
 	(sb-ext:run-program
@@ -30,5 +23,4 @@
 
 (define-launcher-runtime
   vita3k
-  vita3k-launcher
-  make-vita3k-launcher)
+  vita3k-launcher)

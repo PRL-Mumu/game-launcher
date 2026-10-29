@@ -4,45 +4,16 @@
 exec ros -Q -- $0 "$@"
 |#
 
-(progn ;;init forms
+(progn
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:game-launcher 
-			      :ltk 
-			      :cl-json 
-			      :dexador 
-			      :cl-yaml 
-			      :cl-dbi
-			      :dbd-sqlite3) :silent t))
+  #+quicklisp (ql:quickload '(:game-launcher :ltk) :silent t)
+  #+(and unix quicklisp) (ql:quickload '(:game-launcher.steam :game-launcher.lutris :game-launcher.desktop) :silent t))
 
 (defpackage :game-launcher-gui
   (:use :cl :ltk)
   (:export #:main))
 
 (in-package :game-launcher-gui)
-
-;; helper functions
-
-
-;;; ----------------------------------------------------------------------
-;;; Dynamic Backend Helpers (mirroring CLI backend loader)
-;;; ----------------------------------------------------------------------
-
-(defun backend-fn (name)
-  "Return the function named NAME in :game-launcher or :game-launcher.steam, or NIL."
-  (let ((sym (or (find-symbol (string-upcase name) :game-launcher)
-		 (find-symbol (string-upcase name) :game-launcher.steam))))
-    (and sym (fboundp sym) (symbol-function sym))))
-
-(defun call-backend (name &rest args)
-  "Call a dynamically loaded backend function by name."
-  (let ((fn (backend-fn name)))
-    (unless fn
-      (error "Backend function ~A is not available." name))
-    (apply fn args)))
-
-(defun ensure-runtime (name)
-  "Ensure the specified runtime backend file is loaded."
-  (game-launcher:load-runtime (game-launcher:runtime-path) name))
 
 ;;; ----------------------------------------------------------------------
 ;;; Launcher Visual Presentation Helpers
@@ -89,9 +60,8 @@ exec ros -Q -- $0 "$@"
 			     :filetypes '(("Desktop Applications" "*.desktop")
 					  ("All Files" "*")))))
     (when (and path (plusp (length path)))
-      (ensure-runtime 'desktop)
       (handler-case
-	(let ((launcher (call-backend "import-desktop-file" path)))
+	(let ((launcher (game-launcher.desktop:import-desktop-file path)))
 	  (if launcher
 	    (progn
 	      (funcall set-status-fn (format nil "Imported ~S from desktop file."
@@ -123,11 +93,10 @@ exec ros -Q -- $0 "$@"
 				:text "Import All Local Steam Games"
 				:command
 				(lambda ()
-				  (ensure-runtime 'steam)
 				  (funcall set-status-fn "Scanning local Steam library...")
 				  (handler-case
 				    (progn
-				      (call-backend "steam-local-import-all")
+				      (game-launcher.steam:steam-local-import-all)
 				      (game-launcher:write-launchers-to-file (game-launcher:store-path))
 				      (funcall set-status-fn "Local Steam games successfully imported.")
 				      (funcall on-imported-cb)
@@ -151,11 +120,10 @@ exec ros -Q -- $0 "$@"
 				 (lambda ()
 				   (let ((val (string-trim " " (text entry))))
 				     (when (plusp (length val))
-				       (ensure-runtime 'steam)
 				       (funcall set-status-fn (format nil "Importing Steam game ~A..." val))
 				       (handler-case
 					 (progn
-					   (call-backend "import-steam-id" val)
+					   (game-launcher.steam:import-steam-id val)
 					   (game-launcher:write-launchers-to-file (game-launcher:store-path))
 					   (funcall set-status-fn (format nil "Imported Steam game ~A." val))
 					   (funcall on-imported-cb)
@@ -194,11 +162,10 @@ exec ros -Q -- $0 "$@"
 				:text "Import All Lutris Games"
 				:command
 				(lambda ()
-				  (ensure-runtime 'lutris)
 				  (funcall set-status-fn "Reading Lutris database...")
 				  (handler-case
 				    (progn
-				      (call-backend "import-all-lutris-games")
+				      (game-launcher.lutris:import-all-lutris-games)
 				      (game-launcher:write-launchers-to-file (game-launcher:store-path))
 				      (funcall set-status-fn "All Lutris games imported.")
 				      (funcall on-imported-cb)
@@ -222,11 +189,10 @@ exec ros -Q -- $0 "$@"
 				 (lambda ()
 				   (let ((val (string-trim " " (text entry))))
 				     (when (plusp (length val))
-				       (ensure-runtime 'lutris)
 				       (funcall set-status-fn (format nil "Importing Lutris game ~A..." val))
 				       (handler-case
 					 (progn
-					   (call-backend "import-lutris-game" val)
+					   (game-launcher.lutris:import-lutris-game val)
 					   (game-launcher:write-launchers-to-file (game-launcher:store-path))
 					   (funcall set-status-fn (format nil "Imported Lutris game ~S." val))
 					   (funcall on-imported-cb)

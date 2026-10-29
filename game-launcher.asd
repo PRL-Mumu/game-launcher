@@ -1,7 +1,7 @@
 (defsystem #:game-launcher
 	   :name "game-launcher"
 	   :version "0.2.5"
-	   :description "Simple game launcher written in common lisp"
+	   :description "Simple game launcher framework written in common lisp"
 	   :author "Rush Empire"
 	   :license "GPLv3"
 
@@ -9,7 +9,7 @@
 	   (#:uiop
 	    #:fuzzy-match
 	    #:bordeaux-threads
-	    )
+	    #:closer-mop)
 	   :pathname "src"
 
 	   :components

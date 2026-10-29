@@ -3,19 +3,11 @@
 (defclass executable-launcher (launcher)
   ((args      :initarg :args      :accessor launcher-args)))
 
-(defun make-executable-launcher (&key name profile exec args phases)
-  (make-instance 'executable-launcher
-		 :name name
-		 :profile profile
-		 :exec exec
-		 :args args
-		 :phases phases))
-
 (defun executable-exec-phase (ctx)
   (setf (getf ctx :process)
 	(sb-ext:run-program
 	 (getf ctx :exec)
-	 (getf ctx :args)
+	 (split-shell-args (getf ctx :args))
 	 :environment (getf ctx :env)
 	 :search t
 	 :output (or (getf ctx :log-path) *standard-output*)
@@ -39,7 +31,4 @@
           (when (launcher-args launcher)
             `(:args ,(launcher-args launcher)))))
 
-(define-launcher-runtime
-    exec
-  executable-launcher
-  make-executable-launcher)
+(define-launcher-runtime exec executable-launcher)

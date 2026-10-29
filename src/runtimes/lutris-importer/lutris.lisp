@@ -1,5 +1,10 @@
+(defpackage :game-launcher.lutris
+  (:use :cl :game-launcher)
+  (:export 
+    #:import-all-lutris-games
+    #:import-lutris-game))
 
-(in-package :game-launcher)
+(in-package :game-launcher.lutris)
 
 (defstruct lutris-game
   id

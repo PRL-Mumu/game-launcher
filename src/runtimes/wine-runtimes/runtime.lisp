@@ -14,16 +14,6 @@
      :accessor wine-runner)
     ))
 
-(defun make-wine-launcher (&key name profile exec args phases lutris-id runner)
-	 (make-instance 'wine-launcher
-			:name name
-			:profile profile
-			:exec exec
-			:args args
-			:phases phases
-			:lutris-id lutris-id
-			:runner runner))
-
 (defmethod resolve-runner (runner) ;; wip for the extension
 	   (declare (ignore runner))
 	   "wine")
@@ -69,7 +59,4 @@
   '(("DXVK_ASYNC" "1")
     ("WINE_LARGE_ADDRESS_AWARE" "0")))
 
-(define-launcher-runtime
-    wine
-  wine-launcher
-  make-wine-launcher)
+(define-launcher-runtime wine wine-launcher)

@@ -4,11 +4,12 @@
   ((name    :initarg :name    :accessor launcher-name)
    (exec    :initarg :exec    :accessor launcher-exec)
    (profile :initarg :profile :accessor launcher-profile)  ; env data
-   (phases  :initarg :phases  :accessor launcher-phases))) ; clause list
+   (phases  :initarg :phases  :accessor launcher-phases)   ; clause list
+   (tags    :initarg :tags    :accessor launcher-tags))) 
 
 (defgeneric launcherp (obj))
 (defmethod launcherp ((o launcher))
-"Return T if o is a 'launcher' instance."
+  "Return T if o is a 'launcher' instance."
   t)
 (defmethod launcherp ((o t))
   nil)
@@ -20,17 +21,17 @@
 (defgeneric status (launcher &optional stream))
 
 (defgeneric launcher-args (launcher)
-  (:method ((launcher launcher)) nil))
+	    (:method ((launcher launcher)) nil))
 
 (defgeneric profile-slot->form (p)
-  (:documentation "Convert a profile slot to a form representation. Takes a profile object and returns a list containing the keyword :profile and either the name or environment of the profile."))
+	    (:documentation "Convert a profile slot to a form representation. Takes a profile object and returns a list containing the keyword :profile and either the name or environment of the profile."))
 
 (defmethod profile-slot->form ((p profile))
   (cond ((profile-name p) (list :profile (profile-name p)))
-        ((profile-env p)  (list :profile (profile-env p)))))
+	((profile-env p)  (list :profile (profile-env p)))))
 
 (defgeneric launcher->form (launcher)
-  (:documentation "Convert a launcher object into its form representation."))
+	    (:documentation "Convert a launcher object into its form representation."))
 
 (defmethod launcher->form ((launcher launcher))
   (append
@@ -40,6 +41,8 @@
       `(:exec ,(launcher-exec launcher)))
     (when (launcher-phases launcher)
       `(:phases ,(launcher-phases launcher)))
+    (when (launcher-tags launcher)
+      `(:tags ,(launcher-tags launcher)))
     (profile-slot->form (launcher-profile launcher))))
 
 (defmethod launcher-end ((launcher launcher))
@@ -57,20 +60,31 @@
 
 
 (defmacro define-launcher-runtime (name class &optional constructor)
-  "Register a launcher runtime. If CONSTRUCTOR is omitted, generate
-  a MAKE-<NAME>-LAUNCHER function that forwards to MAKE-LAUNCHER."
   (if constructor
-    `(progn
-       (defmethod launcher-runtime ((launcher ,class))
-	 ',name)
-       (register-launcher ',name #',constructor))
-    (let ((ctor (intern (format nil "MAKE-~A-LAUNCHER" name))))
       `(progn
-	 (defmethod launcher-runtime ((launcher ,class))
-	   ',name)
-	 (defun ,ctor (&rest args)
-	   (apply #'make-launcher :runtime ',name args))
-	 (register-launcher ',name #',ctor)))))
+         (defmethod launcher-runtime ((launcher ,class)) ',name)
+         (register-launcher ',name #',constructor))
+      (let* ((class-obj (find-class class))
+             (ctor (intern (format nil "MAKE-~A-LAUNCHER" name)
+                           (symbol-package name)))
+             (pairs
+              (progn
+                (unless (c2mop:class-finalized-p class-obj)
+                  (c2mop:finalize-inheritance class-obj))
+                (loop for slot in (c2mop:class-slots class-obj)
+                      for initargs = (c2mop:slot-definition-initargs slot)
+                      when initargs
+                        append (loop for ia in initargs
+                                     collect (cons ia
+                                                   (intern (symbol-name ia)
+                                                           (symbol-package name))))))))
+        `(progn
+           (defmethod launcher-runtime ((launcher ,class)) ',name)
+           (defun ,ctor (&key ,@(mapcar #'cdr pairs))
+             (make-instance ',class
+                            ,@(loop for (ia . var) in pairs
+                                    append (list ia var))))
+           (register-launcher ',name #',ctor)))))
 
 
 (defun runtime-file-provides (file)

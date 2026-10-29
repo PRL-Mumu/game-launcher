@@ -3,11 +3,11 @@
 #|
 exec ros -Q -- $0 "$@"
 |#
-(progn ;;init forms
+
+(progn
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:game-launcher :cl-json :dexador) :silent t)
-  #+unix(ql:quickload '(:game-launcher :cl-json :dexador :cl-yaml :cl-dbi :dbd-sqlite3) :silent t)
-  )
+  #+quicklisp (ql:quickload '(:game-launcher) :silent t)
+  #+(and unix quicklisp) (ql:quickload '(:game-launcher.steam :game-launcher.lutris :game-launcher.desktop) :silent t))
 
 (in-package :game-launcher)
 
@@ -37,19 +37,6 @@ exec ros -Q -- $0 "$@"
 			 "not defined"))
 	       ))
 
-(defun backend-fn (name)
-  "Return the function named NAME in :game-launcher, or NIL if not present."
-  (let ((sym (find-symbol (string-upcase name) :game-launcher)))
-    (and sym (fboundp sym) (symbol-function sym))))
-
-(defun call-backend (name &rest args)
-  (let ((fn (backend-fn name)))
-    (unless fn
-      (error
-	"Backend function ~A is not available in this build of game-launcher."
-	name))
-    (apply fn args)))
-
 (defun read-form (string)
   (let ((*read-eval* nil))
     (read-from-string string)))
@@ -66,33 +53,28 @@ exec ros -Q -- $0 "$@"
 	   (read-form value)))
 
 	((string= command "desktop")
-	 (when (game-launcher:load-runtime
-		 (game-launcher:runtime-path) 'desktop)
-	   ;(game-launcher.desktop:import-desktop-file value)
-	   (call-backend "import-desktop-file" value)
-	   ))
+	 (if (uiop:os-windows-p) 
+	   (error "desktop import is not supported for windows currently")
+	   (game-launcher.desktop:import-desktop-file value)))
 
 	((string= command "steam-id")
-	 (when (game-launcher:load-runtime
-		 (game-launcher:runtime-path) 'steam)
-	   (call-backend "import-steam-id" value)))
+	 (if (uiop:os-windows-p)
+	   (error "steam import is not supported for windows currently")
+	   (game-launcher.steam:import-steam-id value)))
 
 	((string= command "steam-local")
-	 (when (game-launcher:load-runtime
-		 (game-launcher:runtime-path) 'steam)
+	 (if (uiop:os-windows-p)
+	   (error "steam import is not supported for windows currently")
 	   (if (string= value "all")
-	     (call-backend "steam-local-import-all")
+	     (game-launcher.steam:steam-local-import-all)
 	     (format t "unimplemented..~%"))))
 
 	((string= command "lutris")
 	 (if (uiop:os-windows-p)
-	   "lutris import is not supported for windows currently"
-	   (when (game-launcher:load-runtime
-		   (game-launcher:runtime-path) 'lutris)
+	   (error "lutris import is not supported for windows currently")
 	     (if (string= value "all")
-	       (call-backend "import-all-lutris-games")
-	       (call-backend "import-lutris-game" (nth 3 args))
-	       ))))
+	       (game-launcher.lutris:import-all-lutris-games)
+	       (game-launcher.lutris:import-lutris-game (nth 3 args)))))
 
 	;; default use form
 	(t

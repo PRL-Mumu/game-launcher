@@ -4,7 +4,7 @@
 (defclass rpgmaker-linux-launcher (launcher)
   ())
 
-(defun make-rpgmaker-linux-launcher (&key name profile exec phases)
+(defun make-rpgmaker-linux-launcher (&key name profile exec phases tags)
   "Create a launcher: an executable-launcher on Windows, an
 rpgmaker-linux-launcher on Unix."
   (cond
@@ -13,13 +13,15 @@ rpgmaker-linux-launcher on Unix."
 		   :name name
 		   :profile profile
 		   :exec exec
-		   :phases phases))
+		   :phases phases
+		   :tags tags))
    ((uiop:os-unix-p)
     (make-instance 'rpgmaker-linux-launcher
                    :name name
                    :profile profile
                    :exec exec
-		   :phases phases))))
+		   :phases phases
+		   :tags tags))))
 
 (defun rpgmaker-linux-exec-phase (ctx)
   (let ((proc

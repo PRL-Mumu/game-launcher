@@ -3,13 +3,6 @@
 (defclass xsystem4-launcher (launcher)
   ())
 
-(defun make-xsystem4-launcher (&key name profile exec phases)
-	  (make-instance 'xsystem4-launcher
-			 :name name
-			 :profile profile
-			 :exec exec
-			 :phases phases))
-
 (defun xsystem4-exec (ctx)
   (setf (getf ctx :process)
 	(sb-ext:run-program
@@ -28,6 +21,7 @@
     (post . nil)
     (teardown . teardown-processes)))
 
+
 (defmethod launch ((l xsystem4-launcher))
   (run-pipeline
    (apply-phase-clauses *xsystem4-launch-pipeline* (launcher-phases l))
@@ -36,5 +30,4 @@
 
 (define-launcher-runtime
   xsystem4
-  xsystem4-launcher
-  make-xsystem4-launcher)
+  xsystem4-launcher)

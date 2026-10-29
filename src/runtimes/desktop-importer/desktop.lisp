@@ -1,4 +1,8 @@
-(in-package :game-launcher)
+(defpackage :game-launcher.desktop
+  (:use :cl :game-launcher)
+  (:export #:import-desktop-file))
+
+(in-package :game-launcher.desktop)
 
 (defun parse-desktop-file (path)
   "Parse a .desktop file and return a property list"

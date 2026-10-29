@@ -128,6 +128,7 @@
 (defun split-shell-args (string)
   "split a command-line-style string into argv elements;
    double/single quotes group, whitespace outside quotes separates"
+   (unless (null string)
   (let ((args '())
         (buf (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t))
         (started nil)
@@ -151,7 +152,7 @@
                   (setf started t))))
       (when quote (warn "unterminated quote in args: ~S" string))
       (flush))
-    (nreverse args)))
+    (nreverse args))))
 
 (defun run-command (ctx argv &key log-path)
   "Spawn ARGV with ENV, wait for completion"
