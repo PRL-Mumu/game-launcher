@@ -81,27 +81,22 @@
 (defun steam-local-import (steam-id path)
   (if (member steam-id +steam-import-blacklist+ :test #'string=)
       (format t "skipping blacklisted id: ~A~%" steam-id)
-      (let ((app-name (acf-ref
-		       (parse-acf
-			(merge-pathnames
-			 (format nil "steamapps/appmanifest_~A.acf" steam-id)
-			 path)) "AppState" "name")))
-
-	(register-launcher-instance
-	 (game-launcher::make-steam-launcher
-	  :name app-name
-	  :profile (game-launcher::env)
-	  :exec (format nil "steam://rungameid/~D" steam-id))))))
+      (let* ((manifest (uiop:subpathname*
+                        (uiop:ensure-directory-pathname path)
+                        (format nil "steamapps/appmanifest_~A.acf" steam-id)))
+             (app-name (acf-ref (parse-acf manifest) "AppState" "name")))
+        (register-launcher-instance
+         (game-launcher::make-steam-launcher
+          :name app-name
+          :profile (game-launcher::env)
+          :exec (format nil "steam://rungameid/~D" steam-id))))))
 
 (defun steam-local-import-all ()
-  (let* ((libraryfoldersvdf (parse-acf (uiop:xdg-data-home "Steam/steamapps/libraryfolders.vdf")))
-	(path (merge-pathnames "Steam/steamapps"
-			       (acf-ref
-				libraryfoldersvdf
-				"libraryfolders" "0" "path"))))
-    (loop for steam-id in (mapcar #'car
-				  (acf-ref
-				   libraryfoldersvdf
-				   "libraryfolders" "0" "apps"))
-	  do (steam-local-import steam-id path))))
-
+  (let* ((vdf (parse-acf (uiop:xdg-data-home "Steam/steamapps/libraryfolders.vdf")))
+       (folders (acf-ref vdf "libraryfolders")))
+  (loop for (index . entry) in folders
+        when (every #'digit-char-p index)
+        do (let* ((root (acf-ref entry "path"))
+                  (apps (acf-ref entry "apps")))
+             (loop for steam-id in (mapcar #'car apps)
+                   do (steam-local-import steam-id root))))))

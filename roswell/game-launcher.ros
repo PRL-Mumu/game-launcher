@@ -13,29 +13,29 @@ exec ros -Q -- $0 "$@"
 
 (defun usage (&optional case)
   (if (null case)
-    (format t
-	    "usage: game-launcher NAME
+      (format t
+	      "usage: game-launcher NAME
 	    game-launcher --help {lutris|desktop|steam-local}
 	    game-launcher --list
 	    game-launcher --remove NAME
 	    game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%")
-	    (cond
-	      ((string= case "lutris")
-	       (format t
-		       "Import single/all games from lutris
+    (cond
+     ((string= case "lutris")
+      (format t
+	      "Import single/all games from lutris
 		       usage: game-launcher --import lutris all|<name>~%"))
 
-		       ((string= case "desktop")
-			(format t
-				"usage: game-launcher --import desktop <filename>.desktop~%"))
+     ((string= case "desktop")
+      (format t
+	      "usage: game-launcher --import desktop <filename>.desktop~%"))
 
-		       ((string= case "steam-local")
-			(format t
-				"usage: game-launcher --import steam-local all~%"))
+     ((string= case "steam-local")
+      (format t
+	      "usage: game-launcher --import steam-local all~%"))
 
-		       (t
-			 "not defined"))
-	       ))
+     (t
+      "not defined"))
+    ))
 
 (defun read-form (string)
   (let ((*read-eval* nil))
@@ -44,85 +44,79 @@ exec ros -Q -- $0 "$@"
 (defun handle-import (args)
   (let ((command (second args))
 	(value (third args)))
-    (if (null value)
-      (progn (format t "Error: no import argument supplied.~%")
-	     (usage))
-      (cond
-	((string= command "form")
-	 (game-launcher:import-launcher-form
-	   (read-form value)))
+    (when (null value)
+      (progn (format t "Error: no import argument supplied.~%") (usage)))
+    (when (and (uiop:os-windows-p)
+	       (member command '("desktop" "steam-id" "steam-local" "lutris")
+		       :test #'string=))
+      (error "~A import is not supported on Windows" command))
+    (cond
+     ((string= command "form")
+      (game-launcher:import-launcher-form
+       (read-form value)))
+     ((string= command "desktop")
+      (game-launcher.desktop:import-desktop-file value))
 
-	((string= command "desktop")
-	 (if (uiop:os-windows-p) 
-	   (error "desktop import is not supported for windows currently")
-	   (game-launcher.desktop:import-desktop-file value)))
+     ((string= command "steam-id")
+      (game-launcher.steam:import-steam-id value))
 
-	((string= command "steam-id")
-	 (if (uiop:os-windows-p)
-	   (error "steam import is not supported for windows currently")
-	   (game-launcher.steam:import-steam-id value)))
+     ((string= command "steam-local")
+      (if (string= value "all")
+	  (game-launcher.steam:steam-local-import-all)
+	(format t "unimplemented..~%")))
 
-	((string= command "steam-local")
-	 (if (uiop:os-windows-p)
-	   (error "steam import is not supported for windows currently")
-	   (if (string= value "all")
-	     (game-launcher.steam:steam-local-import-all)
-	     (format t "unimplemented..~%"))))
-
-	((string= command "lutris")
-	 (if (uiop:os-windows-p)
-	   (error "lutris import is not supported for windows currently")
-	     (if (string= value "all")
-	       (game-launcher.lutris:import-all-lutris-games)
-	       (game-launcher.lutris:import-lutris-game (nth 3 args)))))
-
-	;; default use form
-	(t
-	  (game-launcher:import-launcher-form
-	    (read-form command)))))))
+     ((string= command "lutris")
+      (if (string= value "all")
+	  (game-launcher.lutris:import-all-lutris-games)
+	(game-launcher.lutris:import-lutris-game value)))
+     ;; default use form
+     (t
+      (game-launcher:import-launcher-form
+       (read-form command))))))
 
 (defun parse-launcher-url (url)
   (let* ((prefix "game-launcher:")
 	 (prefix-length (length prefix)))
     (when (uiop:string-prefix-p prefix url)
       (uiop:split-string
-	(subseq url prefix-length)
-	:separator "/"))))
+       (subseq url prefix-length)
+       :separator "/"))))
 
 (defun main (&rest args)
   (when (uiop:string-prefix-p "game-launcher:" (first args))
     (setf args (parse-launcher-url (first args))))
-  (game-launcher:with-launcher-session ()
-				       (cond
-					 ((string= (first args) "--import")
-					  (handle-import args))
+  (game-launcher:with-launcher-session
+   ()
+   (cond
+    ((string= (first args) "--import")
+     (handle-import args))
 
-					 ((string= (first args) "--list")
-					  (game-launcher:display-launchers (game-launcher:launcher-list)))
+    ((string= (first args) "--list")
+     (game-launcher:display-launchers (game-launcher:launcher-list)))
 
-					 ((string= (first args) "--help")
-					  (usage (second args)))
+    ((string= (first args) "--help")
+     (usage (second args)))
 
-					 ((string= (first args) "--remove")
-					  (unless (or (null (second args)) (string= (second args) ""));; avoid removing when no name provided
-					    (game-launcher:remove-launcher (second args))
-					    )
-					  )
+    ((string= (first args) "--remove")
+     (when (and (second args)
+		(plusp (length (second args))))
+       (game-launcher:remove-launcher (second args)))
+     )
 
-					 ((string= (first args) "--remove-list")
-					  (game-launcher:prompt-launcher-remove-list))
+    ((string= (first args) "--remove-list")
+     (game-launcher:prompt-launcher-remove-list))
 
-					 (args
-					   (let ((launcher (game-launcher:select-launcher (first args))))
-					     (cond
-					       (launcher
-						 (format t "launching: ~A~%" (game-launcher:launcher-name launcher))
-						 (game-launcher:launch launcher))
-					       (t
-						 (format t "No matching launcher.~%")))))
+    (args
+     (let ((launcher (game-launcher:select-launcher (first args))))
+       (cond
+	(launcher
+	 (format t "launching: ~A~%" (game-launcher:launcher-name launcher))
+	 (game-launcher:launch launcher))
+	(t
+	 (format t "No matching launcher.~%")))))
 
-					 (t
-					   (when-let ((launcher (prompt-launcher-list)))
-						     (bt:join-thread launcher))
-					   ))))
+    (t
+     (when-let ((launcher (prompt-launcher-list)))
+       (bt:join-thread launcher))
+     ))))
 ;;; vim: set ft=lisp lisp:
