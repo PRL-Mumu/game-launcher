@@ -100,9 +100,29 @@ process, or NIL if nothing was stopped."))
 
 (defvar *loaded-runtime-files* (make-hash-table :test 'equal))
 
-(defun runtime-path ()
-  (merge-pathnames "src/runtimes/"
-		   (asdf:system-source-directory :game-launcher)))
+(defvar *runtime-directory-path* nil) ;; generic path should be present
+
+(defvar *runtime-path-list* nil) ;; list of runtime directories
+
+(defun runtime-path (&key (path nil) add)
+  "Resolve the primary runtime directory. When PATH is given, probe it
+   and remember it as the current runtime directory. When ADD is true,
+   add the resolved path to *runtime-path-list*. Falls back through
+   GAME_LAUNCHER_RUNTIMES and the default bundled src/runtimes."
+  (resolve-location '*runtime-directory-path* *runtime-path-list*
+                    :path path :add add
+                    :candidates (list
+                                 (lambda ()
+                                   (let ((p (uiop:getenv "GAME_LAUNCHER_RUNTIMES")))
+                                     (when p (probe-file p))))
+                                 (lambda ()
+                                   (merge-pathnames "src/runtimes/"
+                                                    (asdf:system-source-directory :game-launcher))))))
+
+(defun runtime-paths ()
+  "All runtime directories: the primary path plus every directory
+  registered with runtime-path :add."
+  (delete-duplicates (cons (runtime-path) *runtime-path-list*) :test #'equal))
 
 
 (defmacro define-launcher-runtime (name class &optional constructor)
@@ -162,18 +182,18 @@ process, or NIL if nothing was stopped."))
 	  (warn "Read error while scanning ~A: ~A" file e))))
     (nreverse provides)))
 
-(defun index-runtimes (dir)
-  "Scan DIR's subdirectories and map each runtime symbol to its
-  runtime.lisp.  Cheap: nothing is evaluated."
+(defun index-all-runtimes ()
+  "Scan every registered runtime directory's subdirectories and map each
+  runtime symbol to its runtime.lisp.  Cheap: nothing is evaluated."
   (clrhash *runtime-index*)
-  (dolist (subdir (uiop:subdirectories dir))
-    (let ((entry (merge-pathnames "runtime.lisp" subdir)))
-      (when (probe-file entry)
-	(dolist (sym (runtime-file-provides entry))
-	  (setf (gethash sym *runtime-index*) entry))))))
+  (dolist (dir (runtime-paths))
+    (dolist (subdir (uiop:subdirectories dir))
+      (let ((entry (merge-pathnames "runtime.lisp" subdir)))
+	(when (probe-file entry)
+	  (dolist (sym (runtime-file-provides entry))
+	    (setf (gethash sym *runtime-index*) entry)))))))
 
 (defun load-runtime-file (file)
-					; (format t "Loading runtime: ~A~%" file)
   (handler-case (load file)
     (error (e)
       (error "Failed loading ~A: ~A" file e)))
@@ -181,40 +201,50 @@ process, or NIL if nothing was stopped."))
   file)
 
 (defun load-runtime (dir runtime-symbol)
-  "Ensure the runtime file that registers RUNTIME-SYMBOL under DIR is
-  loaded.  Re-scans DIR once on a miss, so runtimes added after startup
-  are still found.  Returns the pathname, or NIL if no such runtime."
+  "Ensure the runtime file that registers RUNTIME-SYMBOL is loaded.
+  Scans all registered runtime directories on a miss, so runtimes added
+  after startup are still found.  DIR is kept for backward compatibility
+  but is ignored.  Returns the pathname, or NIL if no such runtime."
+  (declare (ignore dir))
   (labels ((lookup ()
 	     (or (gethash runtime-symbol *runtime-index*)
 		 (loop for sym being the hash-keys of *runtime-index*
 			 using (hash-value file)
 		       when (string-equal (symbol-name sym) (symbol-name runtime-symbol))
 			 return file))))
-    (let ((file (or (lookup) (progn (index-runtimes dir) (lookup)))))
+    (let ((file (or (lookup) (progn (index-all-runtimes) (lookup)))))
       (when file
 	(unless (gethash file *loaded-runtime-files*)
 	  (load-runtime-file file))
 	file))))
 
-(defun known-runtimes (dir)
-  "All runtime symbols present under DIR, without loading anything.
-  Use this for listing instead of the registry."
-  (index-runtimes dir)
+(defun known-runtimes (&optional dir)
+  "All runtime symbols present under the runtime directories, without
+  loading anything.  Use this for listing instead of the registry.  DIR
+  is kept for backward compatibility but is ignored."
+  (declare (ignore dir))
+  (index-all-runtimes)
   (loop for sym being the hash-keys of *runtime-index* collect sym))
 
 (defun reload-runtime (dir runtime-symbol)
-  "Force a re-load (e.g. after editing the runtime file)."
+  "Force a re-load (e.g. after editing the runtime file).  Scans all
+  registered runtime directories.  DIR is kept for backward compatibility
+  but is ignored."
+  (declare (ignore dir))
   (let ((file (gethash runtime-symbol *runtime-index*)))
     (when file (remhash file *loaded-runtime-files*)))
   (load-runtime dir runtime-symbol))
 
 (defun rush-debug-load-runtimes ()
   ;; Reload all known runtimes for debugging purposes.
-  (loop :for i :in (known-runtimes (runtime-path))
-	:do (reload-runtime (runtime-path) i)))
+  (loop :for i :in (known-runtimes)
+	:do (reload-runtime nil i)))
 
-(defun load-runtimes (dir)
-  (index-runtimes dir))
+; (defun load-runtimes (&optional dir)
+  ; "Index all registered runtime directories (DIR kept for backward
+  ; compatibility but ignored)."
+  ; (declare (ignore dir))
+  ; (index-all-runtimes))
 
 (define-condition unknown-runtime (error)
   ((runtime :initarg :runtime :reader unknown-runtime-name))

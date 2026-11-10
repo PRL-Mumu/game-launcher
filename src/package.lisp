@@ -8,8 +8,6 @@
 		#:when-let
 		#:if-let)
   (:export
-    #:assoc-path
-    #:main
     #:launcher
     #:launcherp
     #:make-launcher
@@ -18,29 +16,35 @@
     #:display-launchers
     #:list-launchers
     #:launcher-list
+    #:find-launcher
+    #:remove-launcher
     #:list-unknown-launchers
+    #:register-launcher
     #:register-launcher-instance
     #:select-launcher
     #:initialize-launcher
-    #:import-launcher-form
+    #:end-launcher
     #:uninitialize-launcher
-    #:find-launcher
-    #:remove-launcher
+    #:import-launcher-form
     #:run-launcher-thread
     #:launch
     #:launcher-name
     #:launcher-runtime
     #:launcher-exec
     #:launcher-profile
+    #:launcher-stop
     #:unknown-launcher-list
     #:write-launchers-to-file
     #:search-launcher-list
     #:select-launcher-name
     #:load-runtime
+    #:reload-runtime
     #:prompt-launcher-list
     #:prompt-launcher-remove-list
     #:runtime-path
+    #:runtime-paths
     #:store-path
-    #:export-runtime-symbol-into-core
+    #:store-paths
     #:known-runtimes
+    #:define-launcher-runtime
     #:rush-debug-load-runtimes))
