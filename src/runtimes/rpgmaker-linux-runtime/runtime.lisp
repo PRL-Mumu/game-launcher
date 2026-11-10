@@ -1,52 +1,54 @@
 (in-package #:game-launcher)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (use-package :game-launcher))
 
 (defclass rpgmaker-linux-launcher (launcher)
   ())
 
 (defun make-rpgmaker-linux-launcher (&key name profile exec phases tags)
   "Create a launcher: an executable-launcher on Windows, an
-rpgmaker-linux-launcher on Unix."
+  rpgmaker-linux-launcher on Unix."
   (cond
-   ((uiop:os-windows-p)
-    (make-instance 'executable-launcher
-		   :name name
-		   :profile profile
-		   :exec exec
-		   :phases phases
-		   :tags tags))
-   ((uiop:os-unix-p)
-    (make-instance 'rpgmaker-linux-launcher
-                   :name name
-                   :profile profile
-                   :exec exec
-		   :phases phases
-		   :tags tags))))
+    ((uiop:os-windows-p) ;; just make an executable launcher for native exe
+     (make-instance 'executable-launcher
+		    :name name
+		    :profile profile
+		    :exec exec
+		    :phases phases
+		    :tags tags))
+    ((uiop:os-unix-p)
+     (make-instance 'rpgmaker-linux-launcher
+		    :name name
+		    :profile profile
+		    :exec exec
+		    :phases phases
+		    :tags tags))))
 
 (defun rpgmaker-linux-exec-phase (ctx)
-  (let ((proc
-	 (sb-ext:run-program
-	  "rpgmaker-linux"
-	  (list (getf ctx :exec))
-	  :environment (getf ctx :env)
-	  :directory (pathname-directory-pathname (getf ctx :exec))
-	  :search t
-	  :output (or (getf ctx :log-path) *standard-output*)
-	  :wait t)))
-    (setf (getf ctx :process) proc)
+  (let ((proc (sb-ext:run-program
+                "rpgmaker-linux"
+                (list (getf ctx :exec))
+                :environment (getf ctx :env)
+                :directory (pathname-directory-pathname (getf ctx :exec))
+                :search t
+                :output (or (getf ctx :log-path) *standard-output*)
+                :wait nil)))
+    (note-process ctx proc)
+    (sb-ext:process-wait proc)
     ctx))
 
 (defparameter *rpgmaker-linux-pipeline*
-	      '((exec . rpgmaker-linux-exec-phase)
-		(teardown . teardown-processes)))
+  '((exec . rpgmaker-linux-exec-phase)
+    (teardown . teardown-processes)))
 
 (defmethod launch ((l rpgmaker-linux-launcher))
-	   (run-pipeline
-	    (apply-phase-clauses *rpgmaker-linux-pipeline*
-				 (launcher-phases l))
-	    (standard-ctx l)))
+  (run-pipeline
+    (apply-phase-clauses *rpgmaker-linux-pipeline*
+			 (launcher-phases l))
+    (standard-ctx l)))
 
 (define-launcher-runtime  ;; macro
- rpgmaker
- rpgmaker-linux-launcher
- make-rpgmaker-linux-launcher)
+  rpgmaker
+  rpgmaker-linux-launcher
+  make-rpgmaker-linux-launcher)

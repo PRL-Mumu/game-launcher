@@ -1,18 +1,22 @@
 (in-package #:game-launcher)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (use-package :game-launcher))
+
 (defclass executable-launcher (launcher)
   ((args      :initarg :args      :accessor launcher-args)))
 
 (defun executable-exec-phase (ctx)
-  (setf (getf ctx :process)
-	(sb-ext:run-program
-	 (getf ctx :exec)
-	 (split-shell-args (getf ctx :args))
-	 :environment (getf ctx :env)
-	 :search t
-	 :output (or (getf ctx :log-path) *standard-output*)
-	 :wait t))
-  ctx)
+  (let ((proc (sb-ext:run-program
+                (getf ctx :exec)
+                (split-shell-args (getf ctx :args))
+                :environment (getf ctx :env)
+                :search t
+                :output (or (getf ctx :log-path) *standard-output*)
+                :wait nil)))
+    (note-process ctx proc)
+    (sb-ext:process-wait proc)
+    ctx))
 
 (defparameter *executable-launch-pipeline*
   '((pre  . nil)

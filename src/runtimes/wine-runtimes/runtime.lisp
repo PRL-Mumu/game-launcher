@@ -1,5 +1,8 @@
 (in-package #:game-launcher)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (use-package :game-launcher))
+
 (defclass wine-launcher (launcher)
   ( (args
      :initarg :args
@@ -7,31 +10,19 @@
     (lutris-id
      :initarg :lutris-id
      :initform nil
-     :accessor launcher-lutris-id)
-    (runner
-     :initarg :runner
-     :initform nil
-     :accessor wine-runner)
-    ))
-
-(defmethod resolve-runner (runner) ;; wip for the extension
-	   (declare (ignore runner))
-	   "wine")
+     :accessor launcher-lutris-id)))
 
 (defun wine-exec-phase (ctx)
-  (let ((proc
-	  (sb-ext:run-program
-	   (if (wine-runner (getf ctx :launcher))
-	       `,(resolve-runner (wine-runner (getf ctx :launcher)))
-	       "wine")
-	   (cons  (getf ctx :exec)
-		  (getf ctx :args))
-	   :environment (getf ctx :env)
-	   :directory (pathname-directory-pathname (getf ctx :exec))
-	   :search t
-	   :output (or (getf ctx :log-path) *standard-output*)
-	   :wait t)))
-    (setf (getf ctx :process) proc)
+  (let ((proc (sb-ext:run-program
+                "wine"
+                (cons (getf ctx :exec) (getf ctx :args))
+                :environment (getf ctx :env)
+                :directory (pathname-directory-pathname (getf ctx :exec))
+                :search t
+                :output (or (getf ctx :log-path) *standard-output*)
+                :wait nil)))
+    (note-process ctx proc)
+    (sb-ext:process-wait proc)
     ctx))
 
 (defparameter *wine-launch-pipeline*
@@ -51,9 +42,7 @@
 	  (when (launcher-args launcher)
 	    `(:args ,(launcher-args launcher)))
 	  (when (launcher-lutris-id launcher)
-	    `(:lutris-id ,(launcher-lutris-id launcher)))
-	  (when (wine-runner launcher)
-	    `(:runner ,(wine-runner launcher)))))
+	    `(:lutris-id ,(launcher-lutris-id launcher)))))
 
 (defparameter *wine-basic-profile*
   '(("DXVK_ASYNC" "1")

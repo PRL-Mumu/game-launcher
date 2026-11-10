@@ -1,24 +1,27 @@
 (in-package #:game-launcher)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  :game-launcher)
+
 (defclass easyrpg-player-launcher (launcher)
   ())
 
 (defun easyrpg-player-exec-phase (ctx)
-  (let ((proc
-	 (sb-ext:run-program
-	  "easyrpg-player"
-	  (list (getf ctx :exec))
-	  :environment (getf ctx :env)
-	  :directory (pathname-directory-pathname (getf ctx :exec))
-	  :search t
-	  :output (or (getf ctx :log-path) *standard-output*)
-	  :wait t)))
-    (setf (getf ctx :process) proc)
+  (let ((proc (sb-ext:run-program
+                "easyrpg-player"
+                (list (getf ctx :exec))
+                :environment (getf ctx :env)
+                :directory (pathname-directory-pathname (getf ctx :exec))
+                :search t
+                :output (or (getf ctx :log-path) *standard-output*)
+                :wait nil)))
+    (note-process ctx proc)
+    (sb-ext:process-wait proc)
     ctx))
 
 (defparameter *easyrpg-player-pipeline*
-	      '((exec . easyrpg-player-exec-phase)
-		(teardown . teardown-processes)))
+  '((exec . easyrpg-player-exec-phase)
+    (teardown . teardown-processes)))
 
 (define-standard-pipeline-launch easyrpg-player-launcher *easyrpg-player-pipeline*)
 
