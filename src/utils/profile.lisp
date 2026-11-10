@@ -56,13 +56,13 @@
       table)
     result))
 
-(defun build-environment (profile)
-  "combine profile with posix environment
-   and return environment"
-  (hash->environment
-    (apply-profile
-      (environment->hash (sb-ext:posix-environ))
-      profile)))
+(defun build-environment (&rest profiles)
+  "Combine the POSIX environment with zero or more profiles.
+Later profiles win on key collisions. Returns a string list."
+  (let ((table (environment->hash (sb-ext:posix-environ))))
+    (dolist (p profiles)
+      (apply-profile table p))
+    (hash->environment table)))
 
 (defun env-profile-config-path ()
   (merge-pathnames "game-launcher/profiles.lisp" (uiop:xdg-config-home)))

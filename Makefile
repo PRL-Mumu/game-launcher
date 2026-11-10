@@ -1,5 +1,5 @@
 run:
-	sbcl --eval '(require :asdf)' --eval '(asdf:load-system :game-launcher)' --eval '(game-launcher:main)' --eval '(sb-ext:exit)'
+	roswell/game-launcher.ros
 
 repl:
 	sbcl --eval '(require :asdf)' --eval '(ql:quickload :game-launcher :silent t)' --eval '(in-package :game-launcher)' --eval '(initialize-launcher)'
