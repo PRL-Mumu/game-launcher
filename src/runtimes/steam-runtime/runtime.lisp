@@ -1,5 +1,8 @@
 (in-package #:game-launcher)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (use-package :game-launcher))
+
 (defclass steam-launcher (launcher)
   ())
 
@@ -19,10 +22,10 @@
 (defmethod launch ((l steam-launcher))
   (run-pipeline
    (apply-phase-clauses *steam-pipeline* (launcher-phases l))
-   (standard-ctx l)))
+   (standard-ctx l :log nil))) ;; logging is set to nil so log file wont be created
+
 
 (define-launcher-runtime
   steam ;; symbol
   steam-launcher ;; class
-  ) 
-
+  )

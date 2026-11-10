@@ -1,7 +1,9 @@
 (in-package #:game-launcher)
 
-(defclass vita3k-launcher (launcher)
-  ())
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (use-package :game-launcher))
+
+(defclass vita3k-launcher (launcher) ())
 
 (defun vita3k-exec (ctx)
   (setf (getf ctx :process)
@@ -19,7 +21,7 @@
 (defmethod launch ((l vita3k-launcher))
   (run-pipeline
    (apply-phase-clauses *vita3k-pipeline* (launcher-phases l))
-   (standard-ctx l)))
+   (standard-ctx l :log nil)))
 
 (define-launcher-runtime
   vita3k
