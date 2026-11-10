@@ -153,6 +153,23 @@
 		 (warn "skipping ~A: wine game, no exe in yaml"
 		       (lutris-game-name game)))))
 
+	  ((and (string-equal (lutris-game-runner game) "linux") yaml-path)
+	   (let* ((yaml (cl-yaml:parse (uiop:read-file-string yaml-path)))
+		  (game-block (yaml-get yaml "game"))
+		  (exe (yaml-get game-block "exe")))
+	     (if exe
+		 (progn
+		   (when (load-runtime (runtime-path) 'game-launcher::exec)
+		     (make-executable-launcher
+		      :name (lutris-game-name game)
+		      :exec (scalar->string exe)
+		      :args (normalize-args (yaml-get game-block "args"))
+		      :profile (yaml-env->profile yaml))))
+
+		 (warn "skipping ~A: exec game, no exe in yaml"
+		       (lutris-game-name game)))))
+
+
 	  (t
 	   (warn "skipping ~A: runner ~S not supported"
 		 (lutris-game-name game) (lutris-game-runner game)))
