@@ -88,11 +88,11 @@
           :if-does-not-exist :create
           :external-format :utf-8)))
 
-(defmethod standard-ctx ((l launcher))
+(defmethod standard-ctx ((l launcher) &key (log t))
   (list :launcher l
 		  :exec (launcher-exec l)
 		  :env (build-environment (launcher-profile l))
-		  :log-path (resolve-launcher-log l)
+		  :log-path (if log (resolve-launcher-log l) nil)
 		  :process nil
 		  :processes nil))
 
@@ -190,6 +190,15 @@
       (warn "Interrupted — tearing down ~d process(es)"
             (length (getf ctx :processes)))
       (teardown-processes ctx))))
+
+(defun note-process (ctx proc)
+  (let ((l (getf ctx :launcher))
+        lock)
+    (when l
+      (setf lock (ensure-lock l))
+      (bt:with-lock-held (lock)
+        (setf (launcher-process l) proc))))
+  proc)
 
 (defmacro define-standard-pipeline-launch (class pipeline)
   "usual way of defining pipeline launch unless you need to customize the ctx list"
