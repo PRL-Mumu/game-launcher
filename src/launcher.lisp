@@ -1,8 +1,10 @@
 (in-package :game-launcher)
 
+;;; generic helpers for launcher frontends
+
 (defun launcher-names ()
   (loop for name being the hash-keys of *launchers*
-        collect name))
+        collect (coerce name '(simple-array character (*)))))
 
 (defun find-launcher (name)
   (gethash name *launchers*))
