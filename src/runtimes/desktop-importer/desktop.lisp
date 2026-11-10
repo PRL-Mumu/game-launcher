@@ -31,7 +31,6 @@
 				      :args (getf data :args))))
 	(when launcher
 	  (register-launcher-instance launcher)
-	  (write-launchers-to-file (store-path))
 	  launcher)))))
 
 
