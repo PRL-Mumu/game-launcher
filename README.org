@@ -15,7 +15,7 @@ game-launcher NAME
 game-launcher --help {lutris|desktop|steam-local}
 game-launcher --list
 game-launcher --remove NAME
-game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%")
+game-launcher --import form|desktop|steam-id|steam-local|lutris (args)
 #+end_src
 
 * Install
@@ -24,7 +24,7 @@ game-launcher --import form|desktop|steam-id|steam-local|lutris (args)~%")
 
 make sure to install for your system
 
-Rosswell https://github.com/roswell/roswell
+Roswell https://github.com/roswell/roswell
 
 after setup
 
@@ -38,23 +38,23 @@ after setup
   make install # build and install the cli binary
 #+end_src
 
-* Current Implementation Features
+* Features
 
 ** Launcher Definitions
 
 Games can be represented as launcher objects containing the information required to start them.
 #+begin_src common-lisp
-(let ((launcher (make-instance 'wine-launcher
-		 :name "Touhou 6"
-		 :exec "/path/to/touhou")))
- (launch launcher))
+(let ((launcher (game-launcher:make-launcher 'wine
+             :name "Touhou 6"
+             :exec "/path/to/touhou")))
+  (game-launcher:launch launcher))
 #+end_src
 
 ** Runtime Support
 
 Launchers can be associated with different runtime implementations, allowing the same framework to handle games that require different ways of being executed.
 
-runtimes need a launcher subclass and a identifier symbol to be registered, additionally a constructor can be passed
+A runtime is registered with a symbol, a launcher subclass, and an optional constructor via ~define-launcher-runtime~:
 #+begin_src common-lisp
   (defclass lutris-launcher (launcher) ())
 
@@ -65,13 +65,12 @@ runtimes need a launcher subclass and a identifier symbol to be registered, addi
     )
 #+end_src
 
-*** custom phase support
+*** Custom phase support
 
-launcher pipeline system now lets you split the launch steps into phases
-
-the phases run in order in sync or async (name . function)
-
-this lets the store definition be read into the pipeline for phase functions
+The launcher pipeline system splits launch steps into phases that run in
+order, synchronously or asynchronously (a ~(name . function)~ pair). Phases
+can be added before/after, replaced, or deleted, and the store definition is
+read into the pipeline for phase functions:
 
 #+begin_src common-lisp
 
@@ -81,31 +80,23 @@ this lets the store definition be read into the pipeline for phase functions
       (post . nil)
       (teardown . teardown-processes)))
 
-  ;; to run the pipeline with launch we can
-
-  (defmethod launch ((l executable-launcher)) ;; method specific to executable launcher
-  (run-pipeline
-   (apply-phase-clauses *executable-launch-pipeline* ;; defined phases for the runtime
-                        (launcher-phases l)) ;; additional phases taken from store
-   ;; the phase clauses include
-   ;; (add-before <name> fn)
-   ;; (add-after <name> fn)
-   ;; (replace <name> fn)
-   ;; (delete <name>)
-
-   (list :
-         launcher l
-         :exec     (launcher-exec l)
-         :args     (or (launcher-args l) '())
-         :env      (build-environment (launcher-profile l))
-         :process  nil
-  	 :processes nil) ;; ctx to pass around
-   ))
-  ; for the fn definition run-command and run-async-command functions are provided
+  (defmethod launch ((l executable-launcher))
+    (run-pipeline
+     (apply-phase-clauses *executable-launch-pipeline*
+                          (launcher-phases l))
+     (list :launcher l
+           :exec     (launcher-exec l)
+           :args     (or (launcher-args l) '())
+           :env      (build-environment (launcher-profile l))
+           :process  nil
+           :processes nil)))
 
 #+end_src
 
-the system allows for running games that require a series of events, such as servers running or loading a file, and can be expanded with scripts
+The helper functions ~run-command~ and ~run-async-command~ are provided for
+phase function definitions. This lets games that require a series of events
+(such as starting a database server before launching) be described in the
+store definition and expanded with custom Lisp code.
 
 ** Form-Based Serialization
 
@@ -126,7 +117,7 @@ Unknown forms are stored as raw serialized data and can be written back to the l
 
 The launcher and runtime systems are designed around Common Lisp's object system, making it possible to add new launcher and runtime types without changing the core serialization mechanism.
 
-keeping the core dependency layer small has made it easier to write extension scripts and frontend for them. api, rpc, ffi etc.
+Keeping the core dependency layer small has made it easier to write extension scripts and frontends for them.
 
 ** Emacs Integration
 
@@ -189,6 +180,16 @@ Launchers live in =~/.config/game-launcher/launcher-store.lisp= as Lisp
 forms, one list of launchers. Editable by hand. Reloaded on every run;
 saved at session end.
 
+A ~store-tree~ file (~=~/.config/game-launcher/games/store-tree.lisp=) can
+reference additional store files and directories (~:store-file~, ~:store-tree~,
+or plain strings/directory entries), which are loaded and written back
+individually. Each launcher and unknown form records its provenance (the
+store file it came from), so on exit each store file is written back with
+only the definitions that originated from it — definitions added at runtime
+with no provenance are written to the primary store. Writes are atomic
+(~write-to-temp-file~ then ~rename-file~) and keep a ~.bak~ of any previous
+store.
+
 #+begin_src common-lisp
 ((WINE :NAME "Touhou 9"
   :PROFILE (("DXVK_ASYNC" "1"))          ; inline env pairs
@@ -199,6 +200,17 @@ saved at session end.
   :ARGS ("-u" "MMOFAN"))
  (STEAM :NAME "Elin JRPG"
   :EXEC "steam://rungameid/2135150"))
+#+end_src
+
+An example store tree referencing per-game store files and directories:
+
+#+begin_src common-lisp
+("Monster Hunter/MHFZ.lisp")   ; single store file
+("extra/")                      ; every file directly in this directory
+(:store-file "lutris/lutris.lisp")  ; explicit store file reference
+
+;; any other top-level form is evaluated as custom Lisp code
+(defvar *custom-setting* t)
 #+end_src
 
 ** Profiles
@@ -225,13 +237,13 @@ profile once, every launcher picks it up.
 	After the next save, the form reads =:PROFILE MHR= and the profile is
 	stored in profiles.lisp. Re-marking a form updates the shared profile.
 
-* TODO Planned Features [4/4]
+* TODO Planned Features [4/5]
 
 - [X] Runtime Management:
 
   - [X] Improve runtime discovery and management, including easier configuration of external runtimes.
 
-  - [X] configure a runtime to use phases.
+  - [X] Configure a runtime to use phases.
 
 - [X] Environment Configuration
 
@@ -241,17 +253,17 @@ profile once, every launcher picks it up.
 
   - [X] Provide a dedicated command-line interface for creating, inspecting, and launching games.
 
-- [X] Additional Runtime Backends
+- [ ] Additional Runtime Backends
 
   - [ ] Expand support for different game engines, compatibility layers, and external runtime systems.
 
-- [ ] Store file trees
+- [X] Store file trees
 
-  - [ ] Atomic store updates. store file changes would prepare a backup before writing any changes
+  - [X] Atomic store updates (write to temp file, then rename; keep a .bak of the previous store).
 
-  - [ ] Describe a store file tree in store files
+  - [X] Describe a store file tree in store files (:store-file, :store-tree, strings, and directories).
 
-  - [ ] Store file tree can contain custom lisp code
+  - [X] Store file tree can contain custom Lisp code (evaluated at load time).
 
 
 * Design Goals
