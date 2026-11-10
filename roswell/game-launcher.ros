@@ -52,8 +52,7 @@ exec ros -Q -- $0 "$@"
       (error "~A import is not supported on Windows" command))
     (cond
       ((string= command "form")
-       (game-launcher:import-launcher-form
-	 (read-form value)))
+	 (game-launcher:import-launcher-form value))
       ((string= command "desktop")
        (game-launcher.desktop:import-desktop-file value))
 
@@ -63,6 +62,9 @@ exec ros -Q -- $0 "$@"
       ((string= command "steam-local")
        (if (string= value "all")
 	 (game-launcher.steam:steam-local-import-all)
+	 nil)
+       (if (string= value "dry")
+	 (game-launcher:display-launchers (game-launcher.steam:steam-local-import-all :dry t))
 	 (format t "unimplemented..~%")))
 
       ((string= command "lutris")
@@ -71,8 +73,7 @@ exec ros -Q -- $0 "$@"
 	 (game-launcher.lutris:import-lutris-game value)))
       ;; default use form
       (t
-	(game-launcher:import-launcher-form
-	  (read-form command))))))
+	  (game-launcher:import-launcher-form command)))))
 
 (defun parse-launcher-url (url)
   (let* ((prefix "game-launcher:")
@@ -107,7 +108,10 @@ exec ros -Q -- $0 "$@"
 	  (cond
 	    (launcher
 	      (format t "launching: ~A~%" (game-launcher:launcher-name launcher))
-	      (game-launcher:launch launcher))
+	      (handler-case
+	      (game-launcher:launch launcher)
+	      (error (e)
+		     (warn "Error: ~A" e))))
 	    (t
 	      (format t "No matching launcher.~%")))))
 
