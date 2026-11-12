@@ -30,7 +30,8 @@
                 "rpgmaker-linux"
                 (list (getf ctx :exec))
                 :environment (getf ctx :env)
-                :directory (pathname-directory-pathname (getf ctx :exec))
+                :directory (pathname-directory-pathname
+			    (uiop:parse-native-namestring (getf ctx :exec)))
                 :search t
                 :output (or (getf ctx :log-path) *standard-output*)
                 :wait nil)))
