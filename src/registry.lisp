@@ -179,9 +179,11 @@
   (handler-case
       (let ((launcher (apply #'make-launcher form)))
         (register-launcher-instance launcher)
-        (when source
+        (if source
           (setf (gethash (launcher-name launcher) *launcher-provenance*)
-		(namestring source)))
+		(namestring source)) ;; set to source
+	  (setf (gethash (launcher-name launcher) *launcher-provenance*)
+		(namestring (store-path)))) ;; set to default
         launcher)
     (unknown-runtime () ;; test
       (let ((unknown (save-unknown-form form)))
@@ -250,6 +252,10 @@
                  ((and (consp form) (eq (car form) :store-file))
                   (dolist (p (cdr form))
                     (add-store-entry p base)))
+		 ((and (consp form) (eq (car form) :store-tree))
+		  (dolist (p (cdr form))
+		    (when-let ((resolved (probe-file (merge-pathnames p base))))
+			      (read-tree-file resolved))))
                  (t
                   (eval form)))))))
 
@@ -274,6 +280,7 @@
             (read-launchers-from-file path)))))))
 
 (defun initialize-launcher ()
+  (uninitialize-launcher) ;; clear before setting
   (read-profiles-from-file (env-profile-config-path))
   (read-store-tree)
   (load-all-stores))
