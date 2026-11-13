@@ -8,6 +8,8 @@
 	   :depends-on
 	   (#:uiop
 	    #:fuzzy-match
+	    #:cl-ppcre
+	    #:alexandria
 	    #:bordeaux-threads
 	    #:closer-mop)
 	   :pathname "src"
