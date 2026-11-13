@@ -197,7 +197,7 @@ store.
  (EXEC :NAME "Monster Hunter Rise"
   :PROFILE MHR
   :EXEC "/path/to/mhr"
-  :ARGS ("-u" "MMOFAN"))
+  :ARGS "-u MMOFAN")
  (STEAM :NAME "Elin JRPG"
   :EXEC "steam://rungameid/2135150"))
 #+end_src
