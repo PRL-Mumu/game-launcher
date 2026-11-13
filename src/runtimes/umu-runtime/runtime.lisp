@@ -22,7 +22,7 @@
 (defun umu-exec-phase (ctx)
   (let ((proc (sb-ext:run-program
                 "umu-run"
-                (cons (getf ctx :exec) (getf ctx :args))
+                (cons (getf ctx :exec) (split-shell-args (getf ctx :args)))
                 :environment (getf ctx :env)
                 :directory (pathname-directory-pathname
 			    (uiop:parse-native-namestring (getf ctx :exec)))
