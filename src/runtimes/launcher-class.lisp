@@ -46,7 +46,6 @@ process, or NIL if nothing was stopped."))
                   (sb-ext:run-program "pkill" (list "-9" "-P" (format nil "~D" pid)) :wait nil))))
             (setf (launcher-process l) nil)
             (values l (list :pid pid :name name)))))
-      ;  (values l nil)
       )))
 
 (defun await-process-exit (proc timeout &key (poll 0.1))

@@ -75,9 +75,12 @@
         do (format stream "  ~2d. ~a ~:[(anchor)~;~:*-> ~a~]~%"
                    i name fn)))
 
+(defgeneric resolve-launcher-log (launcher))
 (defmethod resolve-launcher-log ((l launcher))
+  "Default log implementation, provides a log file with runtime/obj-address
+  frontends would change the aspect depending on needs, id based, dated, tracking..."
   (let ((path (merge-pathnames
-               (format nil "game-launcher/~X.~(~A~).log"
+               (format nil "game-launcher/~X.~(~A~).log" 
                        (sb-kernel:get-lisp-obj-address l)
                        (launcher-runtime l))
                (uiop:xdg-data-home))))
@@ -166,6 +169,9 @@
   "Tear down each entry in ctx's :processes list. Entries are OS
    processes (from run-command-async) or (thread . stop) conses.
    Clears the list even if an individual teardown fails."
+  (when (getf ctx :log-path)
+    (ignore-errors (close (launcher-log-stream l))) ;; code only to close log
+    (setf (getf ctx :log-path) nil))
   (dolist (p (getf ctx :processes))
     (handler-case
         (cond
@@ -174,7 +180,7 @@
            (sb-thread:join-thread (car p)))
           ((sb-ext:process-p p)                 ; OS process
            (sb-ext:process-kill p 15)
-           (sb-ext:process-wait p))
+           (sb-ext:process-wait p :check-for-stopped t))
           (t (warn "teardown-processes: unknown entry ~s" p)))
       (error (e)
         (warn "teardown-processes: failed on ~s: ~a" p e))))
@@ -186,7 +192,12 @@
       (dolist (phase phases ctx)
         (let ((fn (cdr phase)))
           (when fn (setf ctx (funcall fn ctx)))))
-    (sb-sys:interactive-interrupt ()
+    (sb-sys:interactive-interrupt () ;; handle interactive interrupt
+      (warn "Interrupted — tearing down ~d process(es)"
+            (length (getf ctx :processes)))
+      (teardown-processes ctx))
+    (error (e) ;; handle error
+      (warn "Pipeline Error: ~a" e)
       (warn "Interrupted — tearing down ~d process(es)"
             (length (getf ctx :processes)))
       (teardown-processes ctx))))
