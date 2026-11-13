@@ -1,18 +1,20 @@
 (in-package #:game-launcher)
 
+;; note vita3k launcher. needs emulator vita3k available in path as "vita3k"
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (use-package :game-launcher))
 
 (defclass vita3k-launcher (launcher) ())
 
 (defun vita3k-exec (ctx)
-  (setf (getf ctx :process)
+  ;(setf (getf ctx :process)) no need to set process
 	(sb-ext:run-program
 	 "vita3k"
 	 (list "-r" (getf ctx :exec))
 	 :environment (getf ctx :env)
 	 :search t
-	 :wait nil))  ;; dont wait for emulator
+	 :wait nil)  ;; dont wait for emulator
   ctx)
 
 (defparameter *vita3k-pipeline*

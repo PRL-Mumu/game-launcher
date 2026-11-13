@@ -1,5 +1,7 @@
 (in-package #:game-launcher)
 
+;; steam runtime note. assumes steam installed and available as "steam"
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (use-package :game-launcher))
 
@@ -7,13 +9,13 @@
   ())
 
 (defun steam-exec (ctx)
-  (setf (getf ctx :process)
+  ;(setf (getf ctx :process)) no need to track process as it dies after steam takes over
 	(sb-ext:run-program
 	 "steam"
 	 (list (getf ctx :exec))
 	 :environment (getf ctx :env)
 	 :search t
-	 :wait nil)) ;; dont wait for steam
+	 :wait nil) ;; dont wait for steam
   ctx)
 
 (defparameter *steam-pipeline*
