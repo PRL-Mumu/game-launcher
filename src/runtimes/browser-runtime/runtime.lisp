@@ -1,5 +1,7 @@
 (in-package #:game-launcher)
 
+;; note, currently assumes unix system
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   :game-launcher)
 
@@ -24,13 +26,15 @@
 		 :tags tags))
 
 (defun browser-exec (ctx)
+  ;; no tracking for process or logs 
   (sb-ext:run-program
-    "xdg-open"
+    "xdg-open" ;; standard convention for unix
     (list (launcher-url (getf ctx :launcher)))
     :environment (getf ctx :env)
     :search t
     :wait nil ;; dont wait for browser
-    ))
+    )
+  ctx)
 
 (defparameter *browser-pipeline*
   '((exec . browser-exec)))
