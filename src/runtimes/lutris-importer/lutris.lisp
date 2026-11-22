@@ -38,7 +38,7 @@
 (defun yaml-env->profile (yaml)
   (let* ((game (yaml-get yaml "game"))
          (prefix (yaml-get game "prefix")))
-    (make-profile
+    (game-launcher::make-profile
      (append (env-table->alist (yaml-get (yaml-get yaml "system") "env"))
              (env-table->alist (yaml-get game "env"))
              (when prefix
@@ -104,13 +104,19 @@
   (typecase a
     (null   nil)
     (cons   (mapcar #'scalar->string a))  ; yaml list: elements are already separate argv items
-    (string (split-shell-args a))         ; command-line syntax: parse it
+    (string (game-launcher::split-shell-args a))  ; command-line syntax: parse it
     (t      (list (scalar->string a)))))  ; lone scalar
 
 (defparameter *lutris-games* nil)
 
 (defun load-lutris-games ()
-  (setf *lutris-games* (read-lutris-db (lutris-db-config-path))))
+  "(Re)load the Lutris database into *LUTRIS-GAMES*.  Warns and returns
+   NIL instead of erroring when no database exists."
+  (let ((db (lutris-db-config-path)))
+    (if db
+        (setf *lutris-games* (read-lutris-db db))
+        (progn (warn "No Lutris database found (looked in xdg data/config home)")
+               (setf *lutris-games* nil)))))
 
 (defun find-lutris-game (name)
   (find name *lutris-games* :key #'lutris-game-name :test #'string-equal))
@@ -127,7 +133,7 @@
 	 (if link
 	     (progn
 	       (when (load-runtime (runtime-path) 'game-launcher::browser)
-		 (make-browser-launcher
+		 (game-launcher::make-browser-launcher
 		  :name (lutris-game-name game)
 		  :url (scalar->string link)
 		  :profile (yaml-env->profile yaml)
@@ -143,7 +149,7 @@
 	     (if exe
 		 (progn
 		   (when (load-runtime (runtime-path) 'game-launcher::wine)
-		     (make-wine-launcher
+		     (game-launcher::make-wine-launcher
 		      :name (lutris-game-name game)
 		      :exec (scalar->string exe)
 		      :args (normalize-args (yaml-get game-block "args"))
@@ -160,7 +166,7 @@
 	     (if exe
 		 (progn
 		   (when (load-runtime (runtime-path) 'game-launcher::exec)
-		     (make-executable-launcher
+		     (game-launcher::make-executable-launcher
 		      :name (lutris-game-name game)
 		      :exec (scalar->string exe)
 		      :args (normalize-args (yaml-get game-block "args"))
@@ -183,12 +189,16 @@
 
 
 (defun import-lutris-game (name)
+  (unless *lutris-games*
+    (load-lutris-games))
   (alexandria:if-let ((launcher (convert-lutris-game name)))
     (progn (register-launcher-instance launcher) launcher)
     (warn "could not import lutris game ~S" name)))
 
 (defun import-all-lutris-games ()
   (load-lutris-games)
+  (unless *lutris-games*
+    (return-from import-all-lutris-games nil))
   (let (imported skipped failed)
     (dolist (game *lutris-games*)
       (handler-case

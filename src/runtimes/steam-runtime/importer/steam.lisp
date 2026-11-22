@@ -41,17 +41,26 @@
 
     (t nil)))
 
+(defun ensure-steam-runtime ()
+  "Make sure the steam runtime (and its generated make-steam-launcher) is loaded."
+  (load-runtime (runtime-path) 'game-launcher::steam))
+
 (defun steam-app-name (app-id)
   (let* ((url (format nil
 		      "https://store.steampowered.com/api/appdetails?appids=~D"
 		      app-id))
 	 (json-data
-	   (cl-json:decode-json-from-string
-	     (dexador:get url))))
-    (assoc-path json-data
-		(list (intern (princ-to-string app-id) :keyword)
-		      :data
-		      :name))))
+	   (handler-case
+	       (cl-json:decode-json-from-string
+	         (dexador:get url))
+	     (error (e)
+	       (warn "steam: could not fetch app details for ~D: ~A" app-id e)
+	       nil))))
+    (when json-data
+      (game-launcher::assoc-path json-data
+				  (list (intern (princ-to-string app-id) :keyword)
+					:data
+					:name)))))
 
 (defun import-steam-id (id)
   "Import a game from a Steam App ID, store URL, or launch URL."
@@ -67,11 +76,14 @@
 	     (t nil)))
 	 )
     (if app-id
-	(register-launcher-instance
-	  (game-launcher::make-steam-launcher
-	    :name (steam-app-name app-id)
-	    :profile (game-launcher::env)
-	    :exec (format nil "steam://rungameid/~D" app-id)))
+	(progn
+	  (ensure-steam-runtime)
+	  (register-launcher-instance
+	    (game-launcher::make-steam-launcher
+	      :name (or (steam-app-name app-id)
+			 (format nil "Steam Game ~D" app-id))
+	      :profile (game-launcher::env)
+	      :exec (format nil "steam://rungameid/~D" app-id))))
 	(warn "Could not determine Steam App ID from ~S" id))))
 
 (defparameter +steam-import-blacklist+
@@ -79,31 +91,48 @@
 	"228980" "3029110" "3658110" "4183110" "4628710"))
 
 (defun steam-local-import (steam-id path &key (dry nil))
+  (ensure-steam-runtime)
   (if (member steam-id +steam-import-blacklist+ :test #'string=)
       ;(format t "skipping blacklisted id: ~A~%" steam-id)
       nil
       (let* ((manifest (uiop:subpathname*
 			 (uiop:ensure-directory-pathname path)
-			 (format nil "steamapps/appmanifest_~A.acf" steam-id)))
-	     (app-name (acf-ref (parse-acf manifest) "AppState" "name"))
-	     (l (game-launcher::make-steam-launcher
-		  :name app-name
-		  :profile (game-launcher::env)
-		  :exec (format nil "steam://rungameid/~D" steam-id))))
-	(if dry
-	    l
-	    (register-launcher-instance l)))))
+			 (format nil "steamapps/appmanifest_~A.acf" steam-id))))
+	(unless (probe-file manifest)
+	  (warn "steam: no appmanifest for app ~A under ~A" steam-id path)
+	  (return-from steam-local-import nil))
+	(handler-case
+	    (let* ((app-name (acf-ref (parse-acf manifest) "AppState" "name"))
+		   (app-name (or app-name (format nil "Steam Game ~A" steam-id)))
+		   (l (game-launcher::make-steam-launcher
+			:name app-name
+			:profile (game-launcher::env)
+			:exec (format nil "steam://rungameid/~A" steam-id))))
+	      (if dry
+		  l
+		  (register-launcher-instance l)))
+	  (error (e)
+	    (warn "steam: failed to import app ~A: ~A" steam-id e)
+	    nil)))))
 
 (defun steam-local-import-all (&key (dry nil))
-  (let* ((vdf (parse-acf (uiop:xdg-data-home "Steam/steamapps/libraryfolders.vdf")))
-	 (folders (acf-ref vdf "libraryfolders")))
-    (loop for (index . entry) in folders
-	  when (every #'digit-char-p index)
-	  append (let* ((root (acf-ref entry "path"))
-		    (apps (acf-ref entry "apps")))
-	       (if dry
-		   (loop for steam-id in (mapcar #'car apps)
-			 for l = (steam-local-import steam-id root :dry t)
-			 when l collect l)
-		   (loop for steam-id in (mapcar #'car apps)
-			 do (steam-local-import steam-id root)))))))
+  (unless dry (ensure-steam-runtime))
+  (let* ((vdf-path (uiop:xdg-data-home "Steam/steamapps/libraryfolders.vdf")))
+    (unless (probe-file vdf-path)
+      (warn "steam: libraryfolders.vdf not found at ~A; is Steam installed?" vdf-path)
+      (return-from steam-local-import-all nil))
+    (let* ((vdf (handler-case (parse-acf vdf-path)
+		      (error (e)
+			(warn "steam: cannot parse ~A: ~A" vdf-path e)
+			(return-from steam-local-import-all nil))))
+	   (folders (acf-ref vdf "libraryfolders")))
+      (loop for (index . entry) in folders
+	    when (every #'digit-char-p index)
+	    append (let* ((root (acf-ref entry "path"))
+			      (apps (acf-ref entry "apps")))
+			 (if dry
+			     (loop for steam-id in (mapcar #'car apps)
+				   for l = (steam-local-import steam-id root :dry t)
+				   when l collect l)
+			     (loop for steam-id in (mapcar #'car apps)
+				   do (steam-local-import steam-id root))))))))

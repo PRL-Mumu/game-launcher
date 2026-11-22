@@ -36,6 +36,8 @@
 (defun parse-env-entry (string)
   "split \"ENTRY=VALUE\" into \"ENTRY\" \"VALUE\""
   (let ((pos (position #\= string)))
+    (unless pos
+      (error "Invalid environment entry ~S: missing '='" string))
     (values
       (subseq string 0 pos)
       (subseq string (1+ pos)))))
@@ -68,6 +70,7 @@ Later profiles win on key collisions. Returns a string list."
   (merge-pathnames "game-launcher/profiles.lisp" (uiop:xdg-config-home)))
 
 (defun write-profiles-to-file (filename)
+  (ensure-directories-exist filename)
   (with-open-file (stream filename :direction :output
                           :if-exists :supersede :if-does-not-exist :create)
     (let ((*package* (find-package :game-launcher))
@@ -102,7 +105,14 @@ Later profiles win on key collisions. Returns a string list."
     (list     (make-profile spec))
     (symbol   (or (gethash spec *named-profiles*)
                   (progn (warn "unknown profile ~S" spec)
-                         (make-instance 'profile :name spec :env nil))))))
+                         (make-instance 'profile :name spec :env nil))))
+    (string   (let ((sym (find-symbol (string-upcase spec) :game-launcher)))
+                (if sym
+                    (resolve-profile sym)
+                    (progn (warn "unknown profile ~S" spec)
+                           (make-instance 'profile :name (intern (string-upcase spec)) :env nil)))))
+    (t        (warn "unknown profile spec ~S" spec)
+              (make-instance 'profile))))
 
 
 
@@ -120,6 +130,8 @@ Returns (VALUES clean-plist marker), marker the NAME symbol or nil."
                          (eql (search "=>" (symbol-name (car items))) 0))
                   (multiple-value-bind (rest marker) (walk (cdr items) clean)
                     (values rest (or (car items) marker))))
+                   ((null (cdr items))
+                    (error "Odd-length launcher argument plist: dangling key ~S" (car items)))
                    (t (destructuring-bind (k v &rest r) items
                         (walk r (list* v k clean)))))))
     (walk plist nil)))
@@ -129,10 +141,17 @@ Returns (VALUES clean-plist marker), marker the NAME symbol or nil."
           (find-package :game-launcher)))
 
 (defun ensure-profile (name env)
-  (let ((pairs (profile-env (make-profile env))))
-    (let ((existing (gethash name *named-profiles*)))
-      (if existing
-          (progn (setf (profile-env existing) pairs) existing)
-          (let ((p (make-instance 'profile :name name :env pairs)))
-            (setf (gethash name *named-profiles*) p)
-            p)))))
+  (let ((existing (gethash name *named-profiles*)))
+    (if (null env)
+        ;; no inline env given: keep any existing profile untouched,
+        ;; create an empty one only if none exists
+        (or existing
+            (let ((p (make-instance 'profile :name name :env nil)))
+              (setf (gethash name *named-profiles*) p)
+              p))
+        (let ((pairs (profile-env (make-profile env))))
+          (if existing
+              (progn (setf (profile-env existing) pairs) existing)
+              (let ((p (make-instance 'profile :name name :env pairs)))
+                (setf (gethash name *named-profiles*) p)
+                p))))))

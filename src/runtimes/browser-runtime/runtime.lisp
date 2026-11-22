@@ -32,6 +32,9 @@
     (list (launcher-url (getf ctx :launcher)))
     :environment (getf ctx :env)
     :search t
+				:input nil
+    :output (getf ctx :log-path)
+    :error (getf ctx :log-path)
     :wait nil ;; dont wait for browser
     )
   ctx)

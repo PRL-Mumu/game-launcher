@@ -2,10 +2,23 @@
 (in-package :game-launcher)
 
 (defun import-launcher-form (form)
-  "Read launcher form if parens match"
-  (if (check-parens form) 
-      (read-launcher form)
-      nil))
+  "Import a launcher from FORM, which may be either a string of Lisp
+   source for one launcher form, or an already-read form list.
+   Returns the launcher (or unknown-launcher) that was registered,
+   or NIL when nothing importable was found."
+  (let ((parsed (typecase form
+                  (string (let ((*read-eval* nil))
+                            (handler-case (read-from-string form)
+                              (error (e)
+                                (warn "import-launcher-form: cannot read form ~S: ~A" form e)
+                                (return-from import-launcher-form nil)))))
+                  (list form)
+                  (t (warn "import-launcher-form: expected a string or a form, got ~S" form)
+                     (return-from import-launcher-form nil)))))
+    (if (and (consp parsed) (symbolp (car parsed)))
+        (read-launcher parsed)
+        (progn (warn "import-launcher-form: not a launcher form: ~S" parsed)
+               nil))))
 
 
 (defun assoc-path (alist path &key (key #'identity) (test #'eql) (default nil))

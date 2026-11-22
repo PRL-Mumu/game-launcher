@@ -32,13 +32,15 @@
     #:launcher-runtime
     #:launcher-exec
     #:launcher-profile
-    #:launcher-stop
+    #:stop-launcher
     #:unknown-launcher-list
     #:write-launchers-to-file
+    #:write-all-stores
     #:search-launcher-list
     #:select-launcher-name
     #:load-runtime
     #:reload-runtime
+    #:resolve-launcher-log-path
     #:prompt-launcher-list
     #:prompt-launcher-remove-list
     #:runtime-path

@@ -27,7 +27,9 @@
                 :directory (pathname-directory-pathname
 			    (uiop:parse-native-namestring (getf ctx :exec)))
                 :search t
+				:input nil
                 :output (or (getf ctx :log-path) *standard-output*)
+                :error (or (getf ctx :log-path) *error-output*)
                 :wait nil)))
     (note-process ctx proc)
     (sb-ext:process-wait proc)
@@ -46,6 +48,7 @@
 	  :exec (launcher-exec l)
 	  :env (build-environment (generate-umu-env l) (launcher-profile l))
 	  :log-path (resolve-launcher-log l)
+	  :args (or (launcher-args l) '())
 	  :process nil
 	  :processes nil)))
 

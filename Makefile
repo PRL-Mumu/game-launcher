@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 run:
 	roswell/game-launcher.ros
 

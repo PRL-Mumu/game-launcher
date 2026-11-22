@@ -20,7 +20,9 @@
                 :directory (pathname-directory-pathname
 			    (uiop:parse-native-namestring (getf ctx :exec)))
                 :search t
+				:input nil
                 :output (or (getf ctx :log-path) *standard-output*)
+                :error (or (getf ctx :log-path) *error-output*)
                 :wait nil)))
     (note-process ctx proc)
     (sb-ext:process-wait proc)

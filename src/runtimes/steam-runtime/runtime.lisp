@@ -15,6 +15,9 @@
 	 (list (getf ctx :exec))
 	 :environment (getf ctx :env)
 	 :search t
+				:input nil
+	            :output (getf ctx :log-path)
+	            :error (getf ctx :log-path)
 	 :wait nil) ;; dont wait for steam
   ctx)
 
@@ -24,7 +27,7 @@
 (defmethod launch ((l steam-launcher))
   (run-pipeline
    (apply-phase-clauses *steam-pipeline* (launcher-phases l))
-   (standard-ctx l :log nil))) ;; logging is set to nil so log file wont be created
+   (standard-ctx l :log nil)))
 
 
 (define-launcher-runtime

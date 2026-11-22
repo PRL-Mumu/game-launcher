@@ -140,7 +140,7 @@ process, or NIL if nothing was stopped."))
                                                       collect (cons ia (intern (symbol-name ia)
                                                                                (symbol-package name)))))))
               `(progn
-                 (defun ,ctor (&key ,@(mapcar #'cdr pairs))
+                 (defun ,ctor (&key ,@(mapcar #'cdr pairs) &allow-other-keys)
                    (make-instance ',class
                                   ,@(loop for (ia . var) in pairs
                                           append (list ia var))))
@@ -230,7 +230,8 @@ process, or NIL if nothing was stopped."))
   registered runtime directories.  DIR is kept for backward compatibility
   but is ignored."
   (declare (ignore dir))
-  (let ((file (gethash runtime-symbol *runtime-index*)))
+  (let ((file (gethash (find-runtime-table-key *runtime-index* runtime-symbol)
+                       *runtime-index*)))
     (when file (remhash file *loaded-runtime-files*)))
   (load-runtime dir runtime-symbol))
 
@@ -261,10 +262,20 @@ process, or NIL if nothing was stopped."))
   `(when (every #'find-package (list ,@packages))
      ,@body))
 
+(defun find-runtime-table-key (table runtime-symbol)
+  "Exact lookup of RUNTIME-SYMBOL in TABLE, falling back to a
+   case-insensitive symbol-name comparison so symbols from foreign
+   packages still resolve.  Returns the matching key or NIL."
+  (or (and (gethash runtime-symbol table) runtime-symbol)
+      (loop for sym being the hash-keys of table
+            when (string-equal (symbol-name sym) (symbol-name runtime-symbol))
+              return sym)))
+
 (defun make-launcher (runtime &rest args)
   (load-runtime (runtime-path) runtime)
   (multiple-value-bind (clean-args marker) (split-profile-marker args)
-    (let ((constructor (gethash runtime *launcher-constructors*)))
+    (let ((constructor (gethash (find-runtime-table-key *launcher-constructors* runtime)
+                                *launcher-constructors*)))
       (if constructor
 	  (progn
 	    (setf (getf clean-args :profile)

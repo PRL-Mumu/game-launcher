@@ -4,7 +4,10 @@
 
 (defun launcher-names ()
   (loop for name being the hash-keys of *launchers*
-        collect (coerce name '(simple-array character (*)))))
+        collect (etypecase name
+                  (string name)
+                  (symbol (symbol-name name))
+                  (t (princ-to-string name)))))
 
 (defun find-launcher (name)
   (gethash name *launchers*))
@@ -56,8 +59,9 @@
 (defun choose-launcher (launchers)
   (format t "~&Choice (q to quit): ")
   (finish-output)
-  (let ((input (read-line)))
+  (let ((input (read-line nil nil)))
     (cond
+      ((null input) nil)
       ((string-equal input "q")
        nil)
       (t
@@ -75,7 +79,8 @@
               (launch launcher))
        (error (e)
          (format *error-output* "~&!! LAUNCH ERROR: ~a~%" e)
-         (sb-debug:print-backtrace :stream *error-output* :count 30))))))
+         (sb-debug:print-backtrace :stream *error-output* :count 30)
+         (finish-output *error-output*))))))
 
 (defun prompt-launcher-list ()
   (let ((launchers (launcher-list)))

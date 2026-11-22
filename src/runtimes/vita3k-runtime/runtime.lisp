@@ -14,6 +14,9 @@
 	 (list "-r" (getf ctx :exec))
 	 :environment (getf ctx :env)
 	 :search t
+				:input nil
+	            :output (getf ctx :log-path)
+	            :error (getf ctx :log-path)
 	 :wait nil)  ;; dont wait for emulator
   ctx)
 

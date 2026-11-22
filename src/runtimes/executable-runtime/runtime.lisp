@@ -12,7 +12,9 @@
                 (split-shell-args (getf ctx :args))
                 :environment (getf ctx :env)
                 :search t
+				:input nil
                 :output (or (getf ctx :log-path) *standard-output*)
+                :error (or (getf ctx :log-path) *error-output*)
                 :wait nil)))
     (note-process ctx proc)
     (sb-ext:process-wait proc)

@@ -4,7 +4,8 @@
 	   :license "GPLv3"
 
 	   :depends-on
-	   (#:game-launcher)
+	   (#:game-launcher
+	    #:cl-ppcre)
 
 	   :components (
 			(:file "desktop")

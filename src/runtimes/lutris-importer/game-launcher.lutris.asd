@@ -5,8 +5,9 @@
 
 	   :depends-on
 	   (#:game-launcher
-            #:cl-dbi 
-	    #:cl-yaml 
+            #:alexandria
+            #:cl-dbi
+	    #:cl-yaml
 	    #:dbd-sqlite3)
 
 	   :components (

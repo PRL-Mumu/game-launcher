@@ -76,20 +76,64 @@
                    i name fn)))
 
 (defgeneric resolve-launcher-log (launcher))
+(defgeneric resolve-launcher-log-path (launcher))
+
 (defmethod resolve-launcher-log ((l launcher))
-  "Default log implementation, provides a log file with runtime/obj-address
-  frontends would change the aspect depending on needs, id based, dated, tracking..."
-  (let ((path (merge-pathnames
-               (format nil "game-launcher/~X.~(~A~).log" 
-                       (sb-kernel:get-lisp-obj-address l)
-                       (launcher-runtime l))
-               (uiop:xdg-data-home))))
-    (ensure-directories-exist path)
-    (open path
+  "Open a FRESH session log for this launch. Each launch gets its own
+   uniquely named file (time + random suffix), so game output never
+   accumulates into one shared, ever-growing file. A `current-` symlink
+   pointing at it is maintained so RPC/LOG can find the live log from any
+   image. Override this generic to plug in your own logging."
+  (let* ((file (merge-pathnames
+                (format nil "game-launcher/~(~A~)-~D-~D.log"
+                        (launcher-runtime l)
+                        (get-universal-time)
+                        (random 1000000000))
+                (uiop:xdg-data-home))))
+    (ensure-directories-exist file)
+    (update-current-log-symlink l file)
+    (open file
           :direction :output
           :if-exists :append
           :if-does-not-exist :create
           :external-format :utf-8)))
+
+(defun update-current-log-symlink (launcher file)
+  "Point the `current-` symlink for LAUNCHER at the freshly created
+   session FILE (atomically, via ln -sf). Any process can later resolve
+   the same path through RESOLVE-LAUNCHER-LOG-PATH. Corrupt or absent
+   targets are dropped silently: a missing game simply has no log."
+  (let ((link (current-log-symlink launcher)))
+    (ignore-errors
+      (uiop:run-program
+       (list "ln" "-sf" (namestring file) (namestring link))
+       :error-output nil))))
+
+(defun current-log-symlink (launcher)
+  (merge-pathnames
+   (format nil "game-launcher/current-~(~A~)-~A.log"
+           (launcher-runtime launcher)
+           (sanitize-filename (launcher-name launcher)))
+   (uiop:xdg-data-home)))
+
+(defmethod resolve-launcher-log-path ((l launcher))
+  "Path of the session log for L, or NIL when L has never been
+   launched. Resolves the `current-` symlink maintained at launch time,
+   so it works even for games launched from a different image."
+  (let ((link (current-log-symlink l)))
+    (when (probe-file link)
+      link)))
+
+(defun sanitize-filename (name)
+  "Make NAME safe as a filename component: drop/replace characters that are
+   path separators or otherwise hostile, keep it deterministic."
+  (with-output-to-string (out)
+    (loop for ch across (princ-to-string name)
+          do (cond
+               ((or (alphanumericp ch) (find ch "-_ ."))
+                (write-char ch out))
+               (t
+                (write-char #\- out))))))
 
 (defmethod standard-ctx ((l launcher) &key (log t))
   (list :launcher l
@@ -109,6 +153,7 @@
                                       :directory directory
                                       :environment (getf ctx :env)
                                       :search t
+                                      :input nil
                                       :output log-path
                                       :error  log-path
                                       :if-output-exists :append
@@ -120,6 +165,7 @@
 				      :output (getf ctx :log-path)
 				      :error (getf ctx :log-path)
                                       :search t
+                                      :input nil
                                       :wait wait))))
     (when (and wait (not (zerop (sb-ext:process-exit-code proc))))
       (error "command ~a exited with ~a" argv (sb-ext:process-exit-code proc)))
@@ -128,10 +174,18 @@
             (append (getf ctx :processes) (list proc))))
     ctx))
 
-(defun split-shell-args (string)
+(defun split-shell-args (input)
   "split a command-line-style string into argv elements;
-   double/single quotes group, whitespace outside quotes separates"
-   (unless (null string)
+   double/single quotes group, whitespace outside quotes separates.
+   A LIST of strings is returned unchanged (list args are already argv).
+   NIL/empty string yields NIL."
+  (typecase input
+    (list input)
+    (string (split-shell-args-string input))
+    (t (error "split-shell-args: expected a string or list of strings, got ~S" input))))
+
+(defun split-shell-args-string (string)
+  (unless (null string)
   (let ((args '())
         (buf (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t))
         (started nil)
@@ -163,24 +217,34 @@
 		      :environment (getf ctx :env)
 		      :output (or log-path (getf ctx :log-path))
 		      :search t
+		      :input nil
 		      :wait t))
 
 (defun teardown-processes (ctx)
   "Tear down each entry in ctx's :processes list. Entries are OS
-   processes (from run-command-async) or (thread . stop) conses.
-   Clears the list even if an individual teardown fails."
+   processes (from run-command-async) or (thread . stop) conses whose
+   CDR is a function or a symbol naming one.  The :log-path stream, if
+   any, is closed.  Clears the list even if an individual teardown fails."
   (when (getf ctx :log-path)
-    (ignore-errors (close (launcher-log-stream l))) ;; code only to close log
+    (let ((log (getf ctx :log-path)))
+      (when (streamp log) (ignore-errors (close log))))
     (setf (getf ctx :log-path) nil))
   (dolist (p (getf ctx :processes))
     (handler-case
         (cond
-          ((and (consp p) (functionp (cdr p)))  ; (thread . stop)
-           (funcall (cdr p))
+          ((consp p)                         ; (thread . stop)
+           (let ((stop (cdr p)))
+             (when stop
+               (funcall (etypecase stop
+                          (function stop)
+                          (symbol (symbol-function stop))))))
            (sb-thread:join-thread (car p)))
-          ((sb-ext:process-p p)                 ; OS process
+          ((sb-ext:process-p p)              ; OS process
            (sb-ext:process-kill p 15)
-           (sb-ext:process-wait p :check-for-stopped t))
+           (unless (await-process-exit p 5)
+             (ignore-errors (sb-ext:process-kill p 9))
+             (unless (await-process-exit p 5)
+               (warn "teardown-processes: process ~S did not exit after SIGKILL" p))))
           (t (warn "teardown-processes: unknown entry ~s" p)))
       (error (e)
         (warn "teardown-processes: failed on ~s: ~a" p e))))
