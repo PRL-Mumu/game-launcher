@@ -97,7 +97,7 @@ exec ros -Q -- $0 "$@"
 				  (handler-case
 				    (progn
 				      (game-launcher.steam:steam-local-import-all)
-				      (game-launcher:write-launchers-to-file (game-launcher:store-path))
+				      (game-launcher:write-all-stores)
 				      (funcall set-status-fn "Local Steam games successfully imported.")
 				      (funcall on-imported-cb)
 				      (destroy top))
@@ -124,7 +124,7 @@ exec ros -Q -- $0 "$@"
 				       (handler-case
 					 (progn
 					   (game-launcher.steam:import-steam-id val)
-					   (game-launcher:write-launchers-to-file (game-launcher:store-path))
+					   (game-launcher:write-all-stores)
 					   (funcall set-status-fn (format nil "Imported Steam game ~A." val))
 					   (funcall on-imported-cb)
 					   (destroy top))
@@ -166,7 +166,7 @@ exec ros -Q -- $0 "$@"
 				  (handler-case
 				    (progn
 				      (game-launcher.lutris:import-all-lutris-games)
-				      (game-launcher:write-launchers-to-file (game-launcher:store-path))
+				      (game-launcher:write-all-stores)
 				      (funcall set-status-fn "All Lutris games imported.")
 				      (funcall on-imported-cb)
 				      (destroy top))
@@ -193,7 +193,7 @@ exec ros -Q -- $0 "$@"
 				       (handler-case
 					 (progn
 					   (game-launcher.lutris:import-lutris-game val)
-					   (game-launcher:write-launchers-to-file (game-launcher:store-path))
+					   (game-launcher:write-all-stores)
 					   (funcall set-status-fn (format nil "Imported Lutris game ~S." val))
 					   (funcall on-imported-cb)
 					   (destroy top))
@@ -238,7 +238,7 @@ exec ros -Q -- $0 "$@"
 					      (let* ((*read-eval* nil)
 						     (form (read-from-string raw)))
 						(game-launcher:import-launcher-form form)
-						(game-launcher:write-launchers-to-file (game-launcher:store-path))
+						(game-launcher:write-all-stores)
 						(funcall set-status-fn "Imported launcher form successfully.")
 						(funcall on-imported-cb)
 						(destroy top))
@@ -258,8 +258,10 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest args)
   (declare (ignore args))
-  (game-launcher:initialize-launcher)
-  (with-ltk ()
+  (unwind-protect
+       (progn
+         (game-launcher:initialize-launcher)
+         (with-ltk ()
 	    (wm-title *tk* "Game Launcher")
 	    (minsize *tk* 680 480)
 
@@ -400,15 +402,16 @@ exec ros -Q -- $0 "$@"
 				     (let ((q (string-trim " " (or query ""))))
 				       (if (zerop (length q))
 					 all-launchers
-					 (let ((fuzzy-results (game-launcher:search-launcher-list q)))
-					   (if fuzzy-results
-					     fuzzy-results
-					     (remove-if-not (lambda (l)
-							      (let ((nm (if (typep l 'game-launcher:launcher)
-									  (game-launcher:launcher-name l)
-									  (game-launcher::form-name l))))
-								(search q nm :test #'char-equal)))
-							    all-launchers))))))
+					 (let ((fuzzy-results (game-launcher:search-launcher-list q))
+					       (substr-hits (remove-if-not (lambda (l)
+										    (let ((nm (if (typep l 'game-launcher:launcher)
+												(game-launcher:launcher-name l)
+												(game-launcher::form-name l))))
+										      (search q nm :test #'char-equal)))
+										  all-launchers)))
+					   ;; fuzzy matches for known launchers plus substring
+					   ;; matches for everything (unknown entries included)
+					   (remove-duplicates (append fuzzy-results substr-hits) :test #'eq)))))
 
 		   (update-view-for-query ()
 		     (let* ((q (text search-entry))
@@ -520,6 +523,9 @@ exec ros -Q -- $0 "$@"
 
 		  ;; Initial render
 		  (refresh-view))))))
+       (handler-case (game-launcher:end-launcher)
+         (error (e)
+           (format *error-output* "~&gui: could not save stores on exit: ~A~%" e)))))
 
 (defun cl-user::main (&rest args)
   (apply #'main args))
