@@ -4,3 +4,6 @@
 [submodule "subprojects/gl-tui"]
 	path = subprojects/gl-tui
 	url = https://github.com/PRL-Mumu/gl-tui
+[submodule "subprojects/game-launcher-api"]
+	path = subprojects/game-launcher-api
+	url = https://github.com/PRL-Mumu/game-launcher-api
