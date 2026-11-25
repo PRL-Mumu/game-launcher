@@ -7,3 +7,6 @@
 [submodule "subprojects/game-launcher-api"]
 	path = subprojects/game-launcher-api
 	url = https://github.com/PRL-Mumu/game-launcher-api
+[submodule "subprojects/game-launcher-thumbnails"]
+	path = subprojects/game-launcher-thumbnails
+	url = https://github.com/PRL-Mumu/game-launcher-thumbnails
