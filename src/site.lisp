@@ -4,7 +4,7 @@
 (defparameter *site-tagline* "Guide")
 (defparameter *site-description*
   "A practical guide to game-launcher, a Common Lisp framework for describing and launching games.")
-(defparameter *site-version* "0.2.5")
+(defparameter *site-version* "0.5.0")
 (defparameter *repo-url* "https://github.com/PRL-Mumu/game-launcher")
 (defparameter *repo-label* "GitHub")
 (defparameter *default-port* 4173)
