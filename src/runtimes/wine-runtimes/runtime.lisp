@@ -12,9 +12,28 @@
      :initform nil
      :accessor launcher-lutris-id)))
 
+(defun find-in-path (file)
+  (dolist (path (uiop:split-string (uiop:getenv "PATH") :separator '(#\:)))
+    (let ((candidate (merge-pathnames file (uiop:ensure-directory-pathname path))))
+      (when (probe-file candidate)
+        (return candidate)))))
+
+(define-condition wine-not-found (error)
+  ()
+  (:report (lambda (c stream)
+             (declare (ignore c))
+             (format stream "wine not found in PATH"))))
+
+(defun resolve-wine-binary ()
+  (or (find-in-path "wine")
+      ;; windows: defer to run-program's :search
+      (if (uiop:os-windows-p)
+          ""
+          (error 'wine-not-found))))
+
 (defun wine-exec-phase (ctx)
   (let ((proc (sb-ext:run-program
-                "wine"
+               (resolve-wine-binary) 
                 (cons (getf ctx :exec) (split-shell-args (getf ctx :args)))
                 :environment (getf ctx :env)
                 :directory (pathname-directory-pathname
