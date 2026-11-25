@@ -6,7 +6,7 @@ exec ros -Q -- $0 "$@"
 
 (progn
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:game-launcher :game-launcher-session) :silent t)
+  #+quicklisp (ql:quickload '(:game-launcher :game-launcher-session) :silent t)
   #+(and unix quicklisp) (ql:quickload '(:game-launcher.steam :game-launcher.lutris :game-launcher.desktop) :silent t))
 
 (in-package :game-launcher)
@@ -14,7 +14,7 @@ exec ros -Q -- $0 "$@"
 (defun usage (&optional case)
   (if (null case)
     (format t
-	    "usage: game-launcher NAME
+            "usage: game-launcher NAME
 	    game-launcher --help {lutris|desktop|steam-local}
 	    game-launcher --list
 	    game-launcher --remove NAME
@@ -29,19 +29,19 @@ exec ros -Q -- $0 "$@"
     (cond
       ((string= case "lutris")
        (format t
-	       "Import single/all games from lutris
+               "Import single/all games from lutris
 	       usage: game-launcher --import lutris all|<name>~%"))
 
       ((string= case "desktop")
        (format t
-	       "usage: game-launcher --import desktop <filename>.desktop~%"))
+               "usage: game-launcher --import desktop <filename>.desktop~%"))
 
       ((string= case "steam-local")
        (format t
-	       "usage: game-launcher --import steam-local all~%"))
+               "usage: game-launcher --import steam-local all~%"))
 
       (t
-	"not defined"))))
+        "not defined"))))
 
 (defun read-form (string)
   (let ((*read-eval* nil))
@@ -49,17 +49,17 @@ exec ros -Q -- $0 "$@"
 
 (defun handle-import (args)
   (let ((command (second args))
-	(value (third args)))
+        (value (third args)))
     (when (null value)
       (progn (format t "Error: no import argument supplied.~%") (usage))
       (return-from handle-import nil))
     (when (and (uiop:os-windows-p)
-	       (member command '("desktop" "steam-id" "steam-local" "lutris")
-		       :test #'string=))
+            (member command '("desktop" "steam-id" "steam-local" "lutris")
+                    :test #'string=))
       (error "~A import is not supported on Windows" command))
     (cond
       ((string= command "form")
-	 (game-launcher:import-launcher-form value))
+       (game-launcher:import-launcher-form value))
       ((string= command "desktop")
        (game-launcher.desktop:import-desktop-file value))
 
@@ -69,27 +69,27 @@ exec ros -Q -- $0 "$@"
       ((string= command "steam-local")
        (cond
          ((string= value "all")
-	  (game-launcher.steam:steam-local-import-all))
+          (game-launcher.steam:steam-local-import-all))
          ((string= value "dry")
-	  (game-launcher:display-launchers (game-launcher.steam:steam-local-import-all :dry t)))
+          (game-launcher:display-launchers (game-launcher.steam:steam-local-import-all :dry t)))
          (t
-	  (format t "usage: game-launcher --import steam-local all|dry~%"))))
+           (format t "usage: game-launcher --import steam-local all|dry~%"))))
 
       ((string= command "lutris")
        (if (string= value "all")
-	 (game-launcher.lutris:import-all-lutris-games)
-	 (game-launcher.lutris:import-lutris-game value)))
+         (game-launcher.lutris:import-all-lutris-games)
+         (game-launcher.lutris:import-lutris-game value)))
       ;; default use form
       (t
-	  (game-launcher:import-launcher-form command)))))
+        (game-launcher:import-launcher-form command)))))
 
 (defun parse-launcher-url (url)
   (let* ((prefix "game-launcher:")
-	 (prefix-length (length prefix)))
+         (prefix-length (length prefix)))
     (when (uiop:string-prefix-p prefix url)
       (uiop:split-string
-	(subseq url prefix-length)
-	:separator "/"))))
+       (subseq url prefix-length)
+       :separator "/"))))
 
 (defun select-session (query)
   "Fuzzy-match QUERY against running session names; return the best
@@ -101,10 +101,10 @@ exec ros -Q -- $0 "$@"
     (when (null names)
       (return-from select-session nil))
     (let ((name (first (fuzzy-match:fuzzy-match query names))))
-    (when name
-      (find name sessions
-            :key #'game-launcher-session:session-name
-            :test #'string=)))))
+      (when name
+        (find name sessions
+              :key #'game-launcher-session:session-name
+              :test #'string=)))))
 
 ;;; --- session tracking ----------------------------------------------
 ;;; Launching a game spawns it disowned and records an "active session":
@@ -121,12 +121,12 @@ exec ros -Q -- $0 "$@"
   (let* ((name (launcher-name launcher))
          (started (get-universal-time))
          (session (game-launcher-session:make-session
-                    :name name
-                    :runtime (launcher-runtime launcher)
-                    :pid 0
-                    :log (or (resolve-launcher-log-path launcher) "<pending>")
-                    :started started
-                    :data (list :type "rich"))))
+                   :name name
+                   :runtime (launcher-runtime launcher)
+                   :pid 0
+                   :log (or (resolve-launcher-log-path launcher) "<pending>")
+                   :started started
+                   :data (list :type "rich"))))
     (game-launcher-session:write-session session)
     (require :sb-posix)
     (sb-posix:setenv "GAME_LAUNCHER_SESSION"
@@ -141,18 +141,18 @@ exec ros -Q -- $0 "$@"
       (let ((proc (launcher-process launcher)))
         (cond
           (proc
-           (setf (game-launcher-session:session-pid session) (sb-ext:process-pid proc))
-           (let ((lp (resolve-launcher-log-path launcher)))
-             (when lp
-               (setf (game-launcher-session:session-log session) lp)))
-           (game-launcher-session:write-session session)
-           (format t "session started: ~A  pid=~D~%log: ~A~%"
-                   name (game-launcher-session:session-pid session)
-                   (game-launcher-session:session-log session)))
+            (setf (game-launcher-session:session-pid session) (sb-ext:process-pid proc))
+            (let ((lp (resolve-launcher-log-path launcher)))
+              (when lp
+                (setf (game-launcher-session:session-log session) lp)))
+            (game-launcher-session:write-session session)
+            (format t "session started: ~A  pid=~D~%log: ~A~%"
+                    name (game-launcher-session:session-pid session)
+                    (game-launcher-session:session-log session)))
           (t
-           (ignore-errors
-             (delete-file (game-launcher-session:session-path session)))
-           (format t "~A: failed to spawn; no session recorded~%" name)))))))
+            (ignore-errors
+              (delete-file (game-launcher-session:session-path session)))
+            (format t "~A: failed to spawn; no session recorded~%" name)))))))
 
 ;;; --- CLI entry ---------------------------------------------------
 
@@ -160,102 +160,101 @@ exec ros -Q -- $0 "$@"
   (when (and args (uiop:string-prefix-p "game-launcher:" (first args)))
     (setf args (parse-launcher-url (first args))))
   (game-launcher:with-launcher-session
-    ()
-    (cond
-      ((string= (first args) "--import")
-       (handle-import args))
+   ()
+   (cond
+     ((string= (first args) "--import")
+      (handle-import args))
 
-      ((string= (first args) "--list")
-       (game-launcher:display-launchers (game-launcher:launcher-list)))
+     ((string= (first args) "--list")
+      (game-launcher:display-launchers (game-launcher:launcher-list)))
 
-      ((string= (first args) "--help")
-       (usage (second args)))
+     ((string= (first args) "--help")
+      (usage (second args)))
 
-      ((string= (first args) "--remove")
-       (if (uiop:emptyp (second args))
-	 (game-launcher:prompt-launcher-remove-list)
-	 (game-launcher:remove-launcher (second args))))
+     ((string= (first args) "--remove")
+      (if (uiop:emptyp (second args))
+        (game-launcher:prompt-launcher-remove-list)
+        (game-launcher:remove-launcher (second args))))
 
-      ;; --sessions — list active sessions
-      ((string= (first args) "--sessions")
-       (let ((sessions (game-launcher-session:all-sessions)))
-         (if (null sessions)
-             (format t "no sessions~%")
-             (dolist (s sessions)
-               (format t "~A pid=~A runtime=~A log=~A~%"
-                       (game-launcher-session:session-name s)
-                       (game-launcher-session:session-pid s)
-                       (game-launcher-session:session-runtime s)
-                       (game-launcher-session:session-log s))))))
+     ;; --sessions — list active sessions
+     ((string= (first args) "--sessions")
+      (let ((sessions (game-launcher-session:all-sessions)))
+        (if (null sessions)
+          (format t "no sessions~%")
+          (dolist (s sessions)
+            (format t "~A pid=~A runtime=~A log=~A~%"
+                    (game-launcher-session:session-name s)
+                    (game-launcher-session:session-pid s)
+                    (game-launcher-session:session-runtime s)
+                    (game-launcher-session:session-log s))))))
 
-      ;; --session-log NAME — print the log
-      ((string= (first args) "--session-log")
-       (let ((s (select-session (second args))))
-         (if (null s)
-             (format t "no session named ~A~%" (second args))
-             (when (probe-file (game-launcher-session:session-log s))
-               (with-open-file (in (game-launcher-session:session-log s)
-                                   :direction :input)
-                 (loop for line = (read-line in nil nil) while line
-                       do (format t "~A~%" line)))))))
+     ;; --session-log NAME — print the log
+     ((string= (first args) "--session-log")
+      (let ((s (select-session (second args))))
+        (if (null s)
+          (format t "no session named ~A~%" (second args))
+          (when (probe-file (game-launcher-session:session-log s))
+            (with-open-file (in (game-launcher-session:session-log s)
+                                :direction :input)
+              (loop for line = (read-line in nil nil) while line
+                    do (format t "~A~%" line)))))))
 
-      ;; --session-log-path NAME — print the log path only
-      ((string= (first args) "--session-log-path")
-       (let ((s (select-session (second args))))
-         (if s
-             (format t "~A~%" (game-launcher-session:session-log s))
-             (format t "no session named ~A~%" (second args)))))
+     ;; --session-log-path NAME — print the log path only
+     ((string= (first args) "--session-log-path")
+      (let ((s (select-session (second args))))
+        (if s
+          (format t "~A~%" (game-launcher-session:session-log s))
+          (format t "no session named ~A~%" (second args)))))
 
-      ;; --stop NAME — stop session NAME
-      ((string= (first args) "--stop")
-       (let ((s (select-session (second args))))
-         (if (null s)
-             (format t "no session named ~A~%" (second args))
-             (let ((pid (game-launcher-session:session-pid s)))
-               (require :sb-posix)
-               (cond
-                 ;; pid 0 = the process never spawned; nothing to signal
-                 ((not (plusp pid))
+     ;; --stop NAME — stop session NAME
+     ((string= (first args) "--stop")
+      (let ((s (select-session (second args))))
+        (if (null s)
+          (format t "no session named ~A~%" (second args))
+          (let ((pid (game-launcher-session:session-pid s)))
+            (require :sb-posix)
+            (cond
+              ;; pid 0 = the process never spawned; nothing to signal
+              ((not (plusp pid))
+               (ignore-errors
+                 (delete-file (game-launcher-session:session-path s)))
+               (format t "session ~A had no running process; record removed~%"
+                       (game-launcher-session:session-name s)))
+              (t
+                (ignore-errors (sb-posix:kill pid 15))
+                (ignore-errors
+                  (uiop:run-program (list "pkill" "-TERM" "-P" (format nil "~D" pid))
+                                    :error-output nil :ignore-error-status t))
+                (sleep 0.5)
+                (when (probe-file (format nil "/proc/~D" pid))
+                  (ignore-errors (sb-posix:kill pid 9))
                   (ignore-errors
-                    (delete-file (game-launcher-session:session-path s)))
-                  (format t "session ~A had no running process; record removed~%"
-                          (game-launcher-session:session-name s)))
-                 (t
-                  (ignore-errors (sb-posix:kill pid 15))
-                  (ignore-errors
-                    (uiop:run-program (list "pkill" "-TERM" "-P" (format nil "~D" pid))
+                    (uiop:run-program (list "pkill" "-KILL" "-P" (format nil "~D" pid))
                                       :error-output nil :ignore-error-status t))
-                  (sleep 0.5)
-                  (when (probe-file (format nil "/proc/~D" pid))
-                    (ignore-errors (sb-posix:kill pid 9))
+                  (sleep 0.2))
+                (if (probe-file (format nil "/proc/~D" pid))
+                  ;; still alive (e.g. EPERM): keep the record so the user can retry
+                  (format t "session ~A still appears to be running (pid ~D)~%"
+                          (game-launcher-session:session-name s) pid)
+                  (progn
                     (ignore-errors
-                      (uiop:run-program (list "pkill" "-KILL" "-P" (format nil "~D" pid))
-                                        :error-output nil :ignore-error-status t))
-                    (sleep 0.2))
-                  (if (probe-file (format nil "/proc/~D" pid))
-                      ;; still alive (e.g. EPERM): keep the record so the user can retry
-                      (format t "session ~A still appears to be running (pid ~D)~%"
-                              (game-launcher-session:session-name s) pid)
-                      (progn
-                        (ignore-errors
-                          (delete-file (game-launcher-session:session-path s)))
-                        (format t "stopped: ~A~%" (game-launcher-session:session-name s))))))))))
+                      (delete-file (game-launcher-session:session-path s)))
+                    (format t "stopped: ~A~%" (game-launcher-session:session-name s))))))))))
 
-      (args
-	(let ((launcher (game-launcher:select-launcher (first args))))
-	  (cond
-	    (launcher
-	      (handler-case
-	      (launch-and-record launcher)
-	      (error (e)
-		     (warn "Error: ~A" e))))
-	    (t
-	      (format t "No matching launcher.~%")))))
+     (args
+       (let ((launcher (game-launcher:select-launcher (first args))))
+         (cond
+           (launcher
+             (handler-case
+               (launch-and-record launcher)
+               (error (e)
+                 (warn "Error: ~A" e))))
+           (t
+             (format t "No matching launcher.~%")))))
 
-      (t
-	(let ((launchers (launcher-list)))
-	  (display-launchers launchers)
-	  (when-let ((launcher (choose-launcher launchers)))
-	    (launch-and-record launcher)))
-	))))
+     (t
+       (let ((launchers (launcher-list)))
+         (display-launchers launchers)
+         (when-let ((launcher (choose-launcher launchers)))
+                   (launch-and-record launcher)))))))
 ;;; vim: set ft=lisp lisp:
