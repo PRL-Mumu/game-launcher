@@ -1,7 +1,7 @@
 (in-package #:game-launcher)
 
 (defparameter *launcher-constructors*
-  ;"Runtimes register their constructor to create launcher objects"
+  ;; "Runtimes register their constructor to create launcher objects"
   (make-hash-table))
 
 (defparameter *launchers* ;"Holds launchable launcher objects"
@@ -17,24 +17,24 @@
 
 (defun register-launcher (runtime constructor)
   (setf (gethash runtime *launcher-constructors*)
-	constructor))
+        constructor))
 
 (defun register-launcher-instance (launcher)
   "Sets individual launcher object to name key"
   (setf (gethash (launcher-name launcher) *launchers*)
-	launcher))
+        launcher))
 
 (defun register-unknown-launcher (launcher)
   "Sets unknown launcher object to name key"
   (setf (gethash (form-name launcher) *unknown-launchers*)
-	launcher))
+        launcher))
 
 (defvar *game-launcher-store-path* nil) ;; generic path should be present
 
 (defvar *store-path-list* nil) ;; list of store files and store tree files
 
 (defvar *launcher-provenance* (make-hash-table :test #'equal)) ;; launcher name -> store file pathname
-(defvar *unknown-provenance* (make-hash-table :test #'equal))  ;; unknown name -> store file pathname
+(defvar *unknown-provenance* (make-hash-table :test #'equal)) ;; unknown name -> store file pathname
 (defvar *store-structural-forms* (make-hash-table :test #'equal)) ;; store file -> list of :store-file/:store-tree marker forms
 
 (defun store-key (path)
@@ -52,10 +52,10 @@
    never overwrite a store whose contents they do not know."
   (when (probe-file filepath)
     (handler-case
-        (let ((*package* (find-package :game-launcher))
-              (*read-eval* nil))
-          (with-open-file (stream filepath :direction :input)
-            (read stream nil '())))
+      (let ((*package* (find-package :game-launcher))
+            (*read-eval* nil))
+        (with-open-file (stream filepath :direction :input)
+          (read stream nil '())))
       (error (e)
         (error "Refusing to overwrite ~A: cannot read it (~A)" filepath e)))))
 
@@ -63,19 +63,19 @@
   "Return true when A and B contain the same forms with the same
    multiplicities, ignoring order."
   (and (= (length a) (length b))
-       (let ((remaining (make-hash-table :test #'equal)))
-         (dolist (form a) (incf (gethash form remaining 0)))
-         (loop for form in b
-               for count = (gethash form remaining 0)
-               always (plusp count)
-               do (decf (gethash form remaining))))))
+    (let ((remaining (make-hash-table :test #'equal)))
+      (dolist (form a) (incf (gethash form remaining 0)))
+      (loop for form in b
+            for count = (gethash form remaining 0)
+            always (plusp count)
+            do (decf (gethash form remaining))))))
 
 (defun structural-forms-of (forms)
   "Return the :store-file / :store-tree forms among FORMS."
   (loop for form in forms
         when (and (consp form)
-                  (member (car form) '(:store-file :store-tree)))
-          collect form))
+               (member (car form) '(:store-file :store-tree)))
+        collect form))
 
 (defun existing-structural-forms (filepath)
   "Return the :store-file / :store-tree forms already present in FILEPATH.
@@ -118,9 +118,9 @@
                                   collect (form-data unknown)))
          (existing-forms (read-store-forms filepath))
          (structural-forms (if source
-                               (or (gethash src-key *store-structural-forms*)
-                                   (structural-forms-of existing-forms))
-                               (structural-forms-of existing-forms)))
+                             (or (gethash src-key *store-structural-forms*)
+                               (structural-forms-of existing-forms))
+                             (structural-forms-of existing-forms)))
          (forms (append launchers unknown-launchers structural-forms))
          (backup (make-pathname :type "bak" :defaults filepath))
          (tmp (make-pathname :name (format nil "~A.tmp" (or (pathname-name filepath) "store"))
@@ -149,19 +149,33 @@
       (when path (write-launchers-to-file path :source path)))
     (when primary (write-launchers-to-file primary :source primary :include-orphans t))))
 
+(defun rename-launcher (launcher new-name)
+  "Rename LAUNCHER in the registry, preserving its store provenance.
+   No-op when the new name is unchanged. Frontends that edit launchers
+   in place should call this instead of manipulating the hashes directly."
+  (let ((old-name (launcher-name launcher)))
+    (unless (string= old-name new-name)
+      (let ((source (gethash old-name *launcher-provenance*)))
+        (remhash old-name *launchers*)
+        (remhash old-name *launcher-provenance*)
+        (setf (launcher-name launcher) new-name)
+        (setf (gethash new-name *launchers*) launcher)
+        (when source
+          (setf (gethash new-name *launcher-provenance*) source))))))
+
 (defun remove-launcher (name)
   (let ((launcher (gethash name *launchers*))
-	(unknown  (gethash name *unknown-launchers*)))
+        (unknown (gethash name *unknown-launchers*)))
     (when launcher
       (remhash name *launchers*)
       (let ((src (gethash name *launcher-provenance*)))
-	(remhash name *launcher-provenance*)
-	(when src (write-launchers-to-file src :source src))))
+        (remhash name *launcher-provenance*)
+        (when src (write-launchers-to-file src :source src))))
     (when unknown
       (remhash name *unknown-launchers*)
       (let ((src (gethash name *unknown-provenance*)))
-	(remhash name *unknown-provenance*)
-	(when src (write-launchers-to-file src :source src))))
+        (remhash name *unknown-provenance*)
+        (when src (write-launchers-to-file src :source src))))
     (unless (or launcher unknown)
       (write-all-stores))))
 
@@ -214,12 +228,12 @@
   "returns a number for the name, unknown launchers do not need stable names"
   (declare (ignore form-data))
   (format nil "unknown-~D"
-	  (incf *unknown-form-counter*)))
+          (incf *unknown-form-counter*)))
 
 (defun save-unknown-form (form)
   (make-instance 'unknown-launcher
-		 :name (make-form-name form)
-		 :data form))
+                 :name (make-form-name form)
+                 :data form))
 
 (defun directory-store-files (directory)
   "Return all files directly in DIRECTORY, non-recursively.
@@ -231,10 +245,11 @@
                                                 :name :wild
                                                 :type :wild)))
       (when (and (pathname-name entry)
-                 (not (equalp (pathname-type entry) "bak")))
+              (not (equalp (pathname-type entry) "bak")))
         (push entry files)))
     (nreverse files)))
-(defun add-store-entry (path base)  "Resolve PATH relative to BASE. If it is a directory, add every file
+(defun add-store-entry (path base) "Resolve PATH relative to BASE. If it is a directory,
+  add every file
    in it (non-recursively) to *store-path-list*. If it is a file, add
    it directly."
   (let ((resolved (merge-pathnames path base)))
@@ -247,20 +262,20 @@
 
 (defun read-launcher (form &key source)
   (handler-case
-      (let ((launcher (apply #'make-launcher form)))
-        (register-launcher-instance launcher)
-        (if source
-          (setf (gethash (launcher-name launcher) *launcher-provenance*)
-		(namestring source)) ;; set to source
-	  (setf (gethash (launcher-name launcher) *launcher-provenance*)
-		(namestring (store-path)))) ;; set to default
-        launcher)
+    (let ((launcher (apply #'make-launcher form)))
+      (register-launcher-instance launcher)
+      (if source
+        (setf (gethash (launcher-name launcher) *launcher-provenance*)
+              (namestring source)) ;; set to source
+        (setf (gethash (launcher-name launcher) *launcher-provenance*)
+              (namestring (store-path)))) ;; set to default
+      launcher)
     (unknown-runtime () ;; test
       (let ((unknown (save-unknown-form form)))
         (register-unknown-launcher unknown)
         (when source
           (setf (gethash (form-name unknown) *unknown-provenance*)
-		(namestring source)))
+                (namestring source)))
         unknown))
     (error (e)
       (warn "Preserving malformed launcher ~%~S~%:~A~%" form e)
@@ -268,7 +283,7 @@
         (register-unknown-launcher unknown)
         (when source
           (setf (gethash (form-name unknown) *unknown-provenance*)
-		(namestring source)))
+                (namestring source)))
         unknown))))
 
 (defun read-launchers-from-file (filepath &key base-dir)
@@ -298,7 +313,7 @@
                  (when resolved (read-tree-file resolved))))
              (push form (gethash key *store-structural-forms*)))
             (t
-             (read-launcher form :source (store-key filepath)))))))))
+              (read-launcher form :source (store-key filepath)))))))))
 
 (defvar *store-tree-path* nil) ;; default store tree file, like an .asd for stores
 
@@ -327,12 +342,12 @@
                  ((and (consp form) (eq (car form) :store-file))
                   (dolist (p (cdr form))
                     (add-store-entry p base)))
-		 ((and (consp form) (eq (car form) :store-tree))
-		  (dolist (p (cdr form))
-		    (when-let ((resolved (probe-file (merge-pathnames p base))))
-			      (read-tree-file resolved))))
+                 ((and (consp form) (eq (car form) :store-tree))
+                  (dolist (p (cdr form))
+                    (when-let ((resolved (probe-file (merge-pathnames p base))))
+                              (read-tree-file resolved))))
                  (t
-                  (eval form)))))))
+                   (eval form)))))))
 
 (defun read-store-tree ()
   "Read the default store tree file (*store-tree-path*) if it exists."
@@ -366,10 +381,10 @@
    state was never initialized in this image, writes are skipped so
    on-disk data is left untouched."
   (if *store-initialized*
-      (progn
-        (write-all-stores)
-        (write-profiles-to-file (env-profile-config-path)))
-      (warn "Launcher was never initialized; leaving stores and profiles untouched"))
+    (progn
+      (write-all-stores)
+      (write-profiles-to-file (env-profile-config-path)))
+    (warn "Launcher was never initialized; leaving stores and profiles untouched"))
   (uninitialize-launcher))
 
 (defun uninitialize-launcher ()
@@ -384,7 +399,7 @@
 
 (defmacro with-launcher-session (() &body body)
   `(unwind-protect
-        (progn
-          (initialize-launcher)
-          ,@body)
+     (progn
+       (initialize-launcher)
+       ,@body)
      (end-launcher)))
