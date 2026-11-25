@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang=en>
+ <head>
+  <meta charset=utf-8>
+  <meta name=viewport
+        content="width=device-width, initial-scale=1">
+  <title>Overview · game-launcher</title>
+  <meta name=description
+        content="What game-launcher is, what it is not, and how the pieces fit together.">
+  <link rel=icon href="assets/favicon.svg"
+        type="image/svg+xml">
+  <script>try{var c=document.cookie.match(&#39;(?:^|; )gl-theme=([^;]*)&#39;);var t=c?c[1]:null;if(t){document.documentElement.dataset.theme=t}else if(window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;).matches){document.documentElement.dataset.theme=&#39;dark&#39;}}catch(e){}</script>
+  <link rel=stylesheet href="assets/style.css">
+ </head>
+</html>
+<body class=page-index>
+ <a class=skip-link href=#content>Skip to content</a>
+ <div class=layout>
+  <aside class=sidebar id=sidebar>
+   <div class=sidebar-brand>
+    <a class=brand href=index.html><span class=brand-mark>GL</span><span
+     class=brand-copy><span class=brand-name>game-launcher</span><span
+      class=brand-tagline>Guide</span></span></a>
+   </div>
+   <nav class=sidebar-nav
+        aria-label="Guide navigation">
+    <div class=nav-group>
+     <p class=nav-heading>Start here
+     <ul>
+      <li><a class="nav-link is-active" href=index.html aria-current=page>Overview</a>
+      <li><a class=nav-link href=getting-started.html>Getting started</a>
+      <li><a class=nav-link href=cli.html>Command line</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Core concepts
+     <ul>
+      <li><a class=nav-link href=store.html>Store files</a>
+      <li><a class=nav-link href=profiles.html>Profiles &amp; environment</a>
+      <li><a class=nav-link href=runtimes.html>Runtimes</a>
+      <li><a class=nav-link href=phases.html>Launch phases</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Guides
+     <ul>
+      <li><a class=nav-link href=importing.html>Importing games</a>
+      <li><a class=nav-link href=extending.html>Extending game-launcher</a>
+      <li><a class=nav-link href=library.html>Using it as a library</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Reference
+     <ul>
+      <li><a class=nav-link href=api.html>API reference</a>
+      <li><a class=nav-link href=architecture.html>Architecture</a>
+     </ul>
+    </div>
+   </nav>
+   <div class=sidebar-foot>
+    <span>v0.2.5</span><a rel="noopener noreferrer"
+    href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+   </div>
+  </aside>
+  <div class=main-column>
+   <div class=topbar>
+    <button class="icon-button menu-button"
+            type=button id=menu-toggle
+            aria-label="Toggle navigation"
+            aria-controls=sidebar aria-expanded=false><span class=menu-lines><span></span>
+      <span></span><span></span></span></button>
+    <div class=crumbs>
+     <span class=crumb-group>Start here</span><span class=crumb-sep>/</span><span
+     class=crumb-current>Overview</span>
+    </div>
+    <div class=topbar-actions>
+     <a class=text-link rel="noopener noreferrer"
+     href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+     <button class="icon-button theme-button"
+             type=button id=theme-toggle
+             aria-label="Toggle dark mode"><span class="theme-icon theme-icon-light">☀</span>
+      <span class="theme-icon theme-icon-dark">☾</span></button>
+    </div>
+   </div>
+   <main class=content id=content>
+    <article class=prose>
+     <header class=page-header>
+      <p class=eyebrow>Start here
+      <h1>Overview</h1>
+      <p class=lede>What game-launcher is, what it is not, and how the pieces fit 
+       together.
+     </header>
+     <div class=markdown><p><strong>game-launcher</strong> is a Common Lisp framework for describing games, their launch
+configuration, and the runtime needed to start them. It is a library first and
+a comes with a command-line launcher: the same launcher objects can be driven from a
+CLI, an editor extension, a GUI, or your own Lisp code.</p>
+
+<p>It is not tied to a storefront. A game can be a native executable, a Wine
+prefix, a Steam URL, a browser page, or a custom pipeline that starts a
+database before the game and stops it afterwards.</p>
+
+<h2 id="why_game-launcher?">Why game-launcher?</h2>
+
+<p>Most launchers assume one ecosystem. game-launcher starts from the opposite
+direction: a launch configuration is plain Lisp data, and a runtime is a small
+piece of code that knows how to execute it.</p>
+
+<ul>
+<li><strong>Data first.</strong> Games live in editable store files, not an opaque database.</li>
+<li><strong>Runtime agnostic.</strong> Wine, Steam, native executables, browser pages, and
+  emulators share one launcher model.</li>
+<li><strong>Extensible.</strong> Add a runtime in a directory. Add phases in a store form.
+  Add an importer as a separate system.</li>
+<li><strong>Preserve what you do not understand.</strong> Unknown runtimes are round-tripped
+  rather than dropped.</li>
+<li><strong>Small core.</strong> The core dependency layer stays small enough to embed.</li>
+</ul>
+
+<h2 id="a_short_tour">A short tour</h2>
+
+<p>A launcher is a Lisp form with a runtime symbol and a name:</p>
+
+<pre class="language-common-lisp"><code>(EXEC :NAME "Cataclysm Bright Nights"
+      :EXEC "/home/me/Games/cataclysmbn-v0.12.0/cataclysm-launcher")</code></pre>
+
+<p>Launch it from the command line by (fuzzy) name:</p>
+
+<pre class="language-sh"><code>game-launcher cataclysm</code></pre>
+
+<p>Or use the library directly:</p>
+
+<pre class="language-common-lisp"><code>(game-launcher:with-launcher-session ()
+  (let ((launcher (game-launcher:select-launcher "cataclysm")))
+    (game-launcher:launch launcher)))</code></pre>
+
+<p>A more involved game can define phases. This example starts PostgreSQL before
+the game, starts a private server alongside it, waits ten seconds, then stops
+PostgreSQL afterwards:</p>
+
+<pre class="language-common-lisp"><code>(EXEC :NAME "Monster Hunter Frontier Z"
+      :EXEC "/home/me/Downloads/MHFCT4.1/mhf-cli"
+      :PHASES
+      ((REPLACE PRE
+                (RUN-COMMAND CTX
+                             (SPLIT-SHELL-ARGS
+                              "pg_ctl -D /home/me/pg -l /home/me/pg/server.log start")))
+       (ADD-AFTER EXEC SERVER
+                  (RUN-COMMAND-ASYNC CTX '("/home/me/erupe")))
+       (ADD-AFTER SERVER DELAY (SLEEP 10))
+       (REPLACE POST
+                (RUN-COMMAND CTX
+                             (SPLIT-SHELL-ARGS
+                              "pg_ctl -D /home/me/pg -l /home/me/pg/server.log stop"))))
+      :PROFILE MHFZ
+      :ARGS "-u MMOFAN --char-id 5")</code></pre>
+
+<h2 id="the_moving_parts">The moving parts</h2>
+<table >
+<thead>
+<tr><th>
+Part</th><th>
+What it does</th><th>
+Read more</th></tr>
+</thead>
+<tbody>
+<tr><td>
+Launcher</td><td>
+An object holding a name, executable, arguments, profile, and phases.</td><td>
+<a href="library.html" >Using it as a library</a></td></tr>
+<tr><td>
+Runtime</td><td>
+A class plus launch method registered under a symbol such as <code>WINE</code>.</td><td>
+<a href="runtimes.html" >Runtimes</a></td></tr>
+<tr><td>
+Store</td><td>
+A Lisp file (or tree of files) containing launcher forms.</td><td>
+<a href="store.html" >Store files</a></td></tr>
+<tr><td>
+Profile</td><td>
+Shared environment variables referenced by name.</td><td>
+<a href="profiles.html" >Profiles</a></td></tr>
+<tr><td>
+Pipeline</td><td>
+Ordered phases around the launch step.</td><td>
+<a href="phases.html" >Launch phases</a></td></tr>
+<tr><td>
+Importer</td><td>
+Optional code that turns desktop, Lutris, or Steam data into launchers.</td><td>
+<a href="importing.html" >Importing games</a></td></tr>
+</tbody>
+</table>
+
+<h2 id="current_status">Current status</h2>
+
+<p>The project is at version <strong>0.2.5</strong>. It targets SBCL on Windows and Unix-like systems and
+is licensed under the GPLv3. Runtime discovery, store trees, named profiles,
+launch phases, session tracking, and desktop/Lutris/Steam importers are all
+implemented.</p>
+
+<p>Start with <a href="getting-started.html" >Getting started</a>, or jump straight to the
+<a href="store.html" >store format</a> if you already have SBCL and Roswell installed.</p>
+
+     </div>
+     <nav class=pager
+          aria-label="Previous and next pages">
+      <span class=pager-spacer></span><a class="pager-link pager-next"
+      href=getting-started.html><span class=pager-label>Next</span><span
+       class=pager-title>Getting started</span></a>
+     </nav>
+    </article>
+   </main>
+   <footer class=site-foot>
+    <p><span>game-launcher guide</span><span class=dot>·</span><a
+     rel="noopener noreferrer" href="https://github.com/PRL-Mumu/game-launcher"
+     target=_blank>Source on GitHub</a><span class=dot>·</span><span>v0.2.5</span>
+   </footer>
+  </div>
+ </div>
+ <script src="assets/app.js"></script>
+</body>

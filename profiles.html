@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang=en>
+ <head>
+  <meta charset=utf-8>
+  <meta name=viewport
+        content="width=device-width, initial-scale=1">
+  <title>Profiles &amp; environment · game-launcher</title>
+  <meta name=description
+        content="Share environment variables between launchers with named and inline profiles.">
+  <link rel=icon href="assets/favicon.svg"
+        type="image/svg+xml">
+  <script>try{var c=document.cookie.match(&#39;(?:^|; )gl-theme=([^;]*)&#39;);var t=c?c[1]:null;if(t){document.documentElement.dataset.theme=t}else if(window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;).matches){document.documentElement.dataset.theme=&#39;dark&#39;}}catch(e){}</script>
+  <link rel=stylesheet href="assets/style.css">
+ </head>
+</html>
+<body class=page-profiles>
+ <a class=skip-link href=#content>Skip to content</a>
+ <div class=layout>
+  <aside class=sidebar id=sidebar>
+   <div class=sidebar-brand>
+    <a class=brand href=index.html><span class=brand-mark>GL</span><span
+     class=brand-copy><span class=brand-name>game-launcher</span><span
+      class=brand-tagline>Guide</span></span></a>
+   </div>
+   <nav class=sidebar-nav
+        aria-label="Guide navigation">
+    <div class=nav-group>
+     <p class=nav-heading>Start here
+     <ul>
+      <li><a class=nav-link href=index.html>Overview</a>
+      <li><a class=nav-link href=getting-started.html>Getting started</a>
+      <li><a class=nav-link href=cli.html>Command line</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Core concepts
+     <ul>
+      <li><a class=nav-link href=store.html>Store files</a>
+      <li><a class="nav-link is-active" href=profiles.html aria-current=page>Profiles 
+        &amp; environment</a>
+      <li><a class=nav-link href=runtimes.html>Runtimes</a>
+      <li><a class=nav-link href=phases.html>Launch phases</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Guides
+     <ul>
+      <li><a class=nav-link href=importing.html>Importing games</a>
+      <li><a class=nav-link href=extending.html>Extending game-launcher</a>
+      <li><a class=nav-link href=library.html>Using it as a library</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Reference
+     <ul>
+      <li><a class=nav-link href=api.html>API reference</a>
+      <li><a class=nav-link href=architecture.html>Architecture</a>
+     </ul>
+    </div>
+   </nav>
+   <div class=sidebar-foot>
+    <span>v0.2.5</span><a rel="noopener noreferrer"
+    href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+   </div>
+  </aside>
+  <div class=main-column>
+   <div class=topbar>
+    <button class="icon-button menu-button"
+            type=button id=menu-toggle
+            aria-label="Toggle navigation"
+            aria-controls=sidebar aria-expanded=false><span class=menu-lines><span></span>
+      <span></span><span></span></span></button>
+    <div class=crumbs>
+     <span class=crumb-group>Core concepts</span><span class=crumb-sep>/</span><span
+     class=crumb-current>Profiles &amp; environment</span>
+    </div>
+    <div class=topbar-actions>
+     <a class=text-link rel="noopener noreferrer"
+     href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+     <button class="icon-button theme-button"
+             type=button id=theme-toggle
+             aria-label="Toggle dark mode"><span class="theme-icon theme-icon-light">☀</span>
+      <span class="theme-icon theme-icon-dark">☾</span></button>
+    </div>
+   </div>
+   <main class=content id=content>
+    <article class=prose>
+     <header class=page-header>
+      <p class=eyebrow>Core concepts
+      <h1>Profiles &amp; environment</h1>
+      <p class=lede>Share environment variables between launchers with named and inline 
+       profiles.
+     </header>
+     <div class=markdown><h2 id="inline_profiles">Inline profiles</h2>
+
+<p>The simplest profile is a list of string pairs:</p>
+
+<pre class="language-common-lisp"><code>(WINE :NAME "Ragnarok Online"
+      :EXEC "/home/me/.wine/drive_c/UaRo.exe"
+      :PROFILE (("DXVK_ASYNC" "1")
+                ("WINE_LARGE_ADDRESS_AWARE" "0")))</code></pre>
+
+<p>The pairs are merged over the process environment when the game launches. A
+profile must be a list of two-element lists whose elements are strings;
+<code>make-profile</code> rejects anything else.</p>
+
+<h2 id="named_profiles">Named profiles</h2>
+
+<p>Duplicate environments get tedious. Name a profile in
+<code>~/.config/game-launcher/profiles.lisp</code>:</p>
+
+<pre class="language-common-lisp"><code>((PROFILE :NAME MHFZ
+          :ENV (("MHF_PASS" "secret")
+                ("WINEDEBUG" "-all")))
+ (PROFILE :NAME TOUHOUENV
+          :ENV (("DXVK_ASYNC" "1"))))</code></pre>
+
+<p>Then reference it by symbol from any store:</p>
+
+<pre class="language-common-lisp"><code>(EXEC :NAME "Monster Hunter Frontier Z"
+      :PROFILE MHFZ
+      :EXEC "/home/me/MHFCT4.1/mhf-cli")</code></pre>
+
+<p>All launchers referencing <code>MHFZ</code> share one profile object. Editing the profile
+once updates every launcher. Profiles are read at session start and written
+back at session end.</p>
+
+<h2 id="creating_a_named_profile_from_an_inline_one">Creating a named profile from an inline one</h2>
+
+<p>Writing an inline profile plus a marker defines a named profile and replaces
+the launcher’s entry with a reference the next time the store is written:</p>
+
+<pre class="language-common-lisp"><code>(WINE :NAME "Monster Hunter Rise"
+      :PROFILE (("DXVK_ASYNC" "1")) =&gt;MHR
+      :EXEC "/home/me/games/mhr.exe")</code></pre>
+
+<p>After the next save the form contains <code>:PROFILE MHR</code>, and the environment lives
+in <code>profiles.lisp</code>. Marking an existing named profile again with a new inline
+environment updates the shared profile; marking it without an environment
+leaves the existing profile alone.</p>
+
+<p>The marker can appear anywhere in the launcher’s top-level argument list. Its
+symbol name begins with <code>=&gt;</code>, and the profile name is the rest of that name
+interned in the <code>GAME-LAUNCHER</code> package.</p>
+
+<h2 id="how_environments_are_built">How environments are built</h2>
+
+<p><code>build-environment</code> starts from the current POSIX environment and applies each
+profile in order. Later profiles win on collisions, so a launcher profile can
+override a variable that is already set in your shell:</p>
+
+<pre class="language-common-lisp"><code>(game-launcher:build-environment
+  (game-launcher:resolve-profile 'MHFZ))</code></pre>
+
+<p>The UMU runtime builds a generated UMU environment first, then applies the
+launcher profile on top, so explicit launcher settings win over generated
+defaults.</p>
+
+<h2 id="programmatic_profiles">Programmatic profiles</h2>
+
+<p>You can construct profiles directly:</p>
+
+<pre class="language-common-lisp"><code>(defparameter *my-profile*
+  (game-launcher:make-profile '(("GAME_ENV" "test"))))
+
+(game-launcher:make-launcher 'exec
+                             :name "Test Game"
+                             :exec "/home/me/test-game"
+                             :profile *my-profile*)</code></pre>
+
+<p><code>resolve-profile</code> accepts a profile object, <code>NIL</code>, an inline pair list, a
+profile name symbol, or a string naming a profile. Unknown names produce a
+warning and an empty profile rather than an error, which keeps a store with a
+missing profile loadable.</p>
+
+     </div>
+     <nav class=pager
+          aria-label="Previous and next pages">
+      <a class="pager-link pager-prev" href=store.html><span class=pager-label>Previous</span>
+       <span class=pager-title>Store files</span></a><a class="pager-link pager-next"
+      href=runtimes.html><span class=pager-label>Next</span><span class=pager-title>Runtimes</span></a>
+     </nav>
+    </article>
+   </main>
+   <footer class=site-foot>
+    <p><span>game-launcher guide</span><span class=dot>·</span><a
+     rel="noopener noreferrer" href="https://github.com/PRL-Mumu/game-launcher"
+     target=_blank>Source on GitHub</a><span class=dot>·</span><span>v0.2.5</span>
+   </footer>
+  </div>
+ </div>
+ <script src="assets/app.js"></script>
+</body>

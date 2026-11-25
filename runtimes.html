@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang=en>
+ <head>
+  <meta charset=utf-8>
+  <meta name=viewport
+        content="width=device-width, initial-scale=1">
+  <title>Runtimes · game-launcher</title>
+  <meta name=description
+        content="How launch backends are discovered, registered, and selected.">
+  <link rel=icon href="assets/favicon.svg"
+        type="image/svg+xml">
+  <script>try{var c=document.cookie.match(&#39;(?:^|; )gl-theme=([^;]*)&#39;);var t=c?c[1]:null;if(t){document.documentElement.dataset.theme=t}else if(window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;).matches){document.documentElement.dataset.theme=&#39;dark&#39;}}catch(e){}</script>
+  <link rel=stylesheet href="assets/style.css">
+ </head>
+</html>
+<body class=page-runtimes>
+ <a class=skip-link href=#content>Skip to content</a>
+ <div class=layout>
+  <aside class=sidebar id=sidebar>
+   <div class=sidebar-brand>
+    <a class=brand href=index.html><span class=brand-mark>GL</span><span
+     class=brand-copy><span class=brand-name>game-launcher</span><span
+      class=brand-tagline>Guide</span></span></a>
+   </div>
+   <nav class=sidebar-nav
+        aria-label="Guide navigation">
+    <div class=nav-group>
+     <p class=nav-heading>Start here
+     <ul>
+      <li><a class=nav-link href=index.html>Overview</a>
+      <li><a class=nav-link href=getting-started.html>Getting started</a>
+      <li><a class=nav-link href=cli.html>Command line</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Core concepts
+     <ul>
+      <li><a class=nav-link href=store.html>Store files</a>
+      <li><a class=nav-link href=profiles.html>Profiles &amp; environment</a>
+      <li><a class="nav-link is-active" href=runtimes.html aria-current=page>Runtimes</a>
+      <li><a class=nav-link href=phases.html>Launch phases</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Guides
+     <ul>
+      <li><a class=nav-link href=importing.html>Importing games</a>
+      <li><a class=nav-link href=extending.html>Extending game-launcher</a>
+      <li><a class=nav-link href=library.html>Using it as a library</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Reference
+     <ul>
+      <li><a class=nav-link href=api.html>API reference</a>
+      <li><a class=nav-link href=architecture.html>Architecture</a>
+     </ul>
+    </div>
+   </nav>
+   <div class=sidebar-foot>
+    <span>v0.2.5</span><a rel="noopener noreferrer"
+    href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+   </div>
+  </aside>
+  <div class=main-column>
+   <div class=topbar>
+    <button class="icon-button menu-button"
+            type=button id=menu-toggle
+            aria-label="Toggle navigation"
+            aria-controls=sidebar aria-expanded=false><span class=menu-lines><span></span>
+      <span></span><span></span></span></button>
+    <div class=crumbs>
+     <span class=crumb-group>Core concepts</span><span class=crumb-sep>/</span><span
+     class=crumb-current>Runtimes</span>
+    </div>
+    <div class=topbar-actions>
+     <a class=text-link rel="noopener noreferrer"
+     href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+     <button class="icon-button theme-button"
+             type=button id=theme-toggle
+             aria-label="Toggle dark mode"><span class="theme-icon theme-icon-light">☀</span>
+      <span class="theme-icon theme-icon-dark">☾</span></button>
+    </div>
+   </div>
+   <main class=content id=content>
+    <article class=prose>
+     <header class=page-header>
+      <p class=eyebrow>Core concepts
+      <h1>Runtimes</h1>
+      <p class=lede>How launch backends are discovered, registered, and selected.
+     </header>
+     <div class=markdown><h2 id="what_a_runtime_is">What a runtime is</h2>
+
+<p>A runtime is the bridge between a launcher form and an operating-system
+process. It normally provides:</p>
+
+<ol>
+<li>A launcher subclass for runtime-specific fields.</li>
+<li>An exec phase that starts the process.</li>
+<li>A pipeline describing where that phase sits.</li>
+<li>A <code>DEFINE-LAUNCHER-RUNTIME</code> form that maps a symbol and class to a
+   constructor.</li>
+</ol>
+
+<p>Runtimes are discovered lazily. The core scans runtime directories, reads
+<code>DEFINE-LAUNCHER-RUNTIME</code> declarations without evaluating the files, and loads
+the matching <code>runtime.lisp</code> only when a launcher needs it.</p>
+
+<h2 id="built-in_runtimes">Built-in runtimes</h2>
+<table >
+<thead>
+<tr><th>
+Symbol</th><th>
+Class</th><th>
+What it starts</th></tr>
+</thead>
+<tbody>
+<tr><td>
+<code>EXEC</code></td><td>
+<code>executable-launcher</code></td><td>
+A native executable with optional <code>:ARGS</code>. Process and log are tracked.</td></tr>
+<tr><td>
+<code>WINE</code></td><td>
+<code>wine-launcher</code></td><td>
+<code>wine EXEC ARGS</code>, with the working directory set to the executable’s directory. Tracks the process.</td></tr>
+<tr><td>
+<code>STEAM</code></td><td>
+<code>steam-launcher</code></td><td>
+<code>steam EXEC</code>, where <code>EXEC</code> is typically <code>steam://rungameid/…</code>. Steam owns the process, so it is not tracked.</td></tr>
+<tr><td>
+<code>BROWSER</code></td><td>
+<code>browser-launcher</code></td><td>
+<code>xdg-open URL</code>. Uses <code>:URL</code> and does not track a process.</td></tr>
+<tr><td>
+<code>UMU</code></td><td>
+<code>umu-launcher</code></td><td>
+<code>umu-run EXEC ARGS</code> with a generated UMU environment merged with the launcher profile.</td></tr>
+<tr><td>
+<code>EASYRPG-PLAYER</code></td><td>
+<code>easyrpg-player-launcher</code></td><td>
+<code>easyrpg-player EXEC</code> in the game directory.</td></tr>
+<tr><td>
+<code>VITA3K</code></td><td>
+<code>vita3k-launcher</code></td><td>
+<code>vita3k -r EXEC</code>, where <code>EXEC</code> is a Vita title ID.</td></tr>
+<tr><td>
+<code>XSYSTEM4</code></td><td>
+<code>xsystem4-launcher</code></td><td>
+<code>xsystem4</code> with the executable’s directory.</td></tr>
+<tr><td>
+<code>RPGMAKER</code></td><td>
+<code>rpgmaker-linux-launcher</code></td><td>
+<code>rpgmaker-linux EXEC</code>; becomes an <code>EXEC</code> launcher on Windows.</td></tr>
+</tbody>
+</table>
+
+<p>Runtimes that launch through another daemon (<code>STEAM</code>, <code>BROWSER</code>, <code>VITA3K</code>)
+intentionally leave <code>:PROCESS</code> unset, so <code>--stop</code> has nothing to manage.</p>
+
+<h2 id="runtime_directories">Runtime directories</h2>
+
+<p>By default the core searches:</p>
+
+<pre class="language-text"><code>&lt;game-launcher source&gt;/src/runtimes/</code></pre>
+
+<p>Add more directories with the environment variable:</p>
+
+<pre class="language-sh"><code>export GAME_LAUNCHER_RUNTIMES="$HOME/.local/share/game-launcher/runtimes"</code></pre>
+
+<p>or from Lisp:</p>
+
+<pre class="language-common-lisp"><code>(game-launcher:runtime-path :path "/home/me/runtimes/" :add t)</code></pre>
+
+<p>Each immediate subdirectory is expected to contain a <code>runtime.lisp</code>. That file
+can define classes, phases, and one or more runtimes.</p>
+
+<h2 id="discovery_and_loading">Discovery and loading</h2>
+
+<pre class="language-common-lisp"><code>;; All runtime symbols without loading their files
+(game-launcher:known-runtimes)
+
+;; Force a load of one runtime
+(game-launcher:load-runtime nil 'wine)
+
+;; Reload after editing a runtime file
+(game-launcher:reload-runtime nil 'wine)</code></pre>
+
+<p><code>load-runtime</code> rescans the registered directories on a miss, so a runtime
+added after startup is still found. Symbol-name comparison is case-insensitive,
+which lets a runtime symbol from another package resolve to the same file.</p>
+
+<p><code>make-launcher</code> calls <code>load-runtime</code> before looking up the constructor. If no
+runtime matches, it signals <code>unknown-runtime</code>; store loading catches that and
+preserves the form as an unknown launcher.</p>
+
+<h2 id="minimal_runtime_sketch">Minimal runtime sketch</h2>
+
+<pre class="language-common-lisp"><code>(in-package #:game-launcher)
+
+(defclass my-launcher (launcher)
+  ((args :initarg :args :accessor launcher-args)))
+
+(defun my-exec (ctx)
+  (let ((process (sb-ext:run-program
+                  "my-runner"
+                  (cons (getf ctx :exec) (split-shell-args (getf ctx :args)))
+                  :environment (getf ctx :env)
+                  :output (getf ctx :log-path)
+                  :error (getf ctx :log-path)
+                  :search t
+                  :wait nil)))
+    (note-process ctx process)
+    (sb-ext:process-wait process)
+    ctx))
+
+(defparameter *my-pipeline*
+  '((pre  . nil)
+    (exec . my-exec)
+    (post . nil)
+    (teardown . teardown-processes)))
+
+(define-standard-pipeline-launch my-launcher *my-pipeline*)
+
+(define-launcher-runtime my-runtime my-launcher)</code></pre>
+
+<p>The next page explains pipelines and phase clauses in detail.</p>
+
+     </div>
+     <nav class=pager
+          aria-label="Previous and next pages">
+      <a class="pager-link pager-prev" href=profiles.html><span class=pager-label>Previous</span>
+       <span class=pager-title>Profiles &amp; environment</span></a><a
+      class="pager-link pager-next" href=phases.html><span class=pager-label>Next</span>
+       <span class=pager-title>Launch phases</span></a>
+     </nav>
+    </article>
+   </main>
+   <footer class=site-foot>
+    <p><span>game-launcher guide</span><span class=dot>·</span><a
+     rel="noopener noreferrer" href="https://github.com/PRL-Mumu/game-launcher"
+     target=_blank>Source on GitHub</a><span class=dot>·</span><span>v0.2.5</span>
+   </footer>
+  </div>
+ </div>
+ <script src="assets/app.js"></script>
+</body>

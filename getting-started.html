@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang=en>
+ <head>
+  <meta charset=utf-8>
+  <meta name=viewport
+        content="width=device-width, initial-scale=1">
+  <title>Getting started · game-launcher</title>
+  <meta name=description
+        content="Install game-launcher, point it at a store, and launch your first game.">
+  <link rel=icon href="assets/favicon.svg"
+        type="image/svg+xml">
+  <script>try{var c=document.cookie.match(&#39;(?:^|; )gl-theme=([^;]*)&#39;);var t=c?c[1]:null;if(t){document.documentElement.dataset.theme=t}else if(window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;).matches){document.documentElement.dataset.theme=&#39;dark&#39;}}catch(e){}</script>
+  <link rel=stylesheet href="assets/style.css">
+ </head>
+</html>
+<body class=page-getting-started>
+ <a class=skip-link href=#content>Skip to content</a>
+ <div class=layout>
+  <aside class=sidebar id=sidebar>
+   <div class=sidebar-brand>
+    <a class=brand href=index.html><span class=brand-mark>GL</span><span
+     class=brand-copy><span class=brand-name>game-launcher</span><span
+      class=brand-tagline>Guide</span></span></a>
+   </div>
+   <nav class=sidebar-nav
+        aria-label="Guide navigation">
+    <div class=nav-group>
+     <p class=nav-heading>Start here
+     <ul>
+      <li><a class=nav-link href=index.html>Overview</a>
+      <li><a class="nav-link is-active" href=getting-started.html aria-current=page>Getting 
+        started</a>
+      <li><a class=nav-link href=cli.html>Command line</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Core concepts
+     <ul>
+      <li><a class=nav-link href=store.html>Store files</a>
+      <li><a class=nav-link href=profiles.html>Profiles &amp; environment</a>
+      <li><a class=nav-link href=runtimes.html>Runtimes</a>
+      <li><a class=nav-link href=phases.html>Launch phases</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Guides
+     <ul>
+      <li><a class=nav-link href=importing.html>Importing games</a>
+      <li><a class=nav-link href=extending.html>Extending game-launcher</a>
+      <li><a class=nav-link href=library.html>Using it as a library</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Reference
+     <ul>
+      <li><a class=nav-link href=api.html>API reference</a>
+      <li><a class=nav-link href=architecture.html>Architecture</a>
+     </ul>
+    </div>
+   </nav>
+   <div class=sidebar-foot>
+    <span>v0.2.5</span><a rel="noopener noreferrer"
+    href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+   </div>
+  </aside>
+  <div class=main-column>
+   <div class=topbar>
+    <button class="icon-button menu-button"
+            type=button id=menu-toggle
+            aria-label="Toggle navigation"
+            aria-controls=sidebar aria-expanded=false><span class=menu-lines><span></span>
+      <span></span><span></span></span></button>
+    <div class=crumbs>
+     <span class=crumb-group>Start here</span><span class=crumb-sep>/</span><span
+     class=crumb-current>Getting started</span>
+    </div>
+    <div class=topbar-actions>
+     <a class=text-link rel="noopener noreferrer"
+     href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+     <button class="icon-button theme-button"
+             type=button id=theme-toggle
+             aria-label="Toggle dark mode"><span class="theme-icon theme-icon-light">☀</span>
+      <span class="theme-icon theme-icon-dark">☾</span></button>
+    </div>
+   </div>
+   <main class=content id=content>
+    <article class=prose>
+     <header class=page-header>
+      <p class=eyebrow>Start here
+      <h1>Getting started</h1>
+      <p class=lede>Install game-launcher, point it at a store, and launch your first 
+       game.
+     </header>
+     <div class=markdown><h2 id="requirements">Requirements</h2>
+
+<ul>
+<li><strong>SBCL.</strong> The runtime and pipeline code uses SBCL-specific APIs
+  (<code>sb-ext:run-program</code>, <code>sb-thread</code>, <code>sb-posix</code>), so SBCL is the supported
+  implementation.</li>
+<li><strong>ASDF and Quicklisp</strong> for building from source and loading dependencies.</li>
+<li><strong>Roswell</strong> if you want the packaged CLI build described below.</li>
+</ul>
+
+<h2 id="install_the_cli">Install the CLI</h2>
+
+<p>The shortest route is using Roswell:</p>
+
+<pre class="language-sh"><code>ros install PRL-Mumu/game-launcher</code></pre>
+
+<p>note: for windows refresh the quicklisp local projects</p>
+
+<pre class="language-sh"><code># in cmd
+$ sbcl # or ros.exe run
+* (ql:register-local-projects)</code></pre>
+
+<p>Or clone the repository into a path in asdf source registry (~/common-lisp)
+and install the built binaries:</p>
+
+<pre class="language-sh"><code>git clone https://github.com/PRL-Mumu/game-launcher.git
+cd game-launcher
+make install</code></pre>
+
+<p>note: for windows the source registry is at <strong>&quot;C:\Users\(YourUsername)\quicklisp\local-projects\&quot;</strong></p>
+
+<p><code>make install</code> builds <code>game-launcher</code> and <code>gamelauncher-gui</code>, installs them
+under <code>~/.roswell/bin</code>, and installs a desktop entry (for unix) if one is not already
+present.</p>
+
+<p>Build without installing:</p>
+
+<pre class="language-sh"><code>make buildcli
+make buildgui</code></pre>
+
+<h2 id="give_it_a_store">Give it a store</h2>
+
+<p>game-launcher looks for its primary store in this order:</p>
+
+<ol>
+<li><code>GAME_LAUNCHER_STORE</code></li>
+<li><code>~/.config/game-launcher/launcher-store.lisp</code> or
+   <code>C:/users/YourUsername/AppData/Local/config/game-launcher/launcher-store.lisp</code></li>
+<li>the bundled <code>src/store/launcher-store.lisp</code> from the source tree</li>
+</ol>
+
+<p>For a normal install, create the config file:</p>
+
+<pre class="language-sh"><code>mkdir -p ~/.config/game-launcher
+$EDITOR ~/.config/game-launcher/launcher-store.lisp</code></pre>
+
+<p>A store is one top-level list of launcher forms:</p>
+
+<pre class="language-common-lisp"><code>((EXEC :NAME "Cataclysm Bright Nights"
+       :EXEC "/home/me/Games/cataclysmbn-v0.12.0/cataclysm-launcher")
+ (STEAM :NAME "Terraria"
+        :EXEC "steam://rungameid/105600"))</code></pre>
+
+<p>The runtime symbol (<code>EXEC</code>, <code>STEAM</code>, <code>WINE</code>, …) must match a runtime found in
+the runtime directories. Bundled runtimes are discovered automatically. The
+full format is described in <a href="store.html" >Store files</a>.</p>
+
+<h2 id="first_launch">First launch</h2>
+
+<p>List everything the launcher can see:</p>
+
+<pre class="language-sh"><code>game-launcher --list</code></pre>
+
+<p>Launch a game by name. Matching is fuzzy, so a unique fragment is enough:</p>
+
+<pre class="language-sh"><code>game-launcher terraria</code></pre>
+
+<p>If nothing matches, game-launcher says so rather than guessing. When several
+launchers match, prefer the full name.</p>
+
+<h2 id="import_instead_of_typing">Import instead of typing</h2>
+
+<p>If the game already exists in a desktop file, Lutris, or a local Steam library,
+import it:</p>
+
+<pre class="language-sh"><code>game-launcher --import desktop /usr/share/applications/some-game.desktop
+game-launcher --import lutris all
+game-launcher --import steam-local all</code></pre>
+
+<p>See <a href="importing.html" >Importing games</a> for dependencies and caveats.</p>
+
+<h2 id="build_from_source_as_a_library">Build from source as a library</h2>
+
+<p>game-launcher is also an ASDF system. From a Lisp REPL with Quicklisp loaded:</p>
+
+<pre class="language-common-lisp"><code>(ql:quickload :game-launcher)
+
+(game-launcher:with-launcher-session ()
+  (game-launcher:display-launchers (game-launcher:launcher-list)))</code></pre>
+
+<p><code>with-launcher-session</code> reads profiles and every store, runs the body, then
+writes the stores and profiles back on exit. Use it whenever you modify
+launchers or profiles and expect the changes to persist.</p>
+
+<h2 id="useful_environment_variables">Useful environment variables</h2>
+<table >
+<thead>
+<tr><th>
+Variable</th><th>
+Effect</th></tr>
+</thead>
+<tbody>
+<tr><td>
+<code>GAME_LAUNCHER_STORE</code></td><td>
+Use this file as the primary store.</td></tr>
+<tr><td>
+<code>GAME_LAUNCHER_RUNTIMES</code></td><td>
+Add a runtime directory to the search path.</td></tr>
+</tbody>
+</table>
+
+<p>Both can also be set programmatically with <code>store-path</code> and <code>runtime-path</code>
+using their <code>:path</code> and <code>:add</code> arguments.</p>
+
+     </div>
+     <nav class=pager
+          aria-label="Previous and next pages">
+      <a class="pager-link pager-prev" href=index.html><span class=pager-label>Previous</span>
+       <span class=pager-title>Overview</span></a><a class="pager-link pager-next"
+      href=cli.html><span class=pager-label>Next</span><span class=pager-title>Command 
+        line</span></a>
+     </nav>
+    </article>
+   </main>
+   <footer class=site-foot>
+    <p><span>game-launcher guide</span><span class=dot>·</span><a
+     rel="noopener noreferrer" href="https://github.com/PRL-Mumu/game-launcher"
+     target=_blank>Source on GitHub</a><span class=dot>·</span><span>v0.2.5</span>
+   </footer>
+  </div>
+ </div>
+ <script src="assets/app.js"></script>
+</body>

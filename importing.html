@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang=en>
+ <head>
+  <meta charset=utf-8>
+  <meta name=viewport
+        content="width=device-width, initial-scale=1">
+  <title>Importing games · game-launcher</title>
+  <meta name=description
+        content="Bring in desktop entries, Lutris games, and Steam libraries.">
+  <link rel=icon href="assets/favicon.svg"
+        type="image/svg+xml">
+  <script>try{var c=document.cookie.match(&#39;(?:^|; )gl-theme=([^;]*)&#39;);var t=c?c[1]:null;if(t){document.documentElement.dataset.theme=t}else if(window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;).matches){document.documentElement.dataset.theme=&#39;dark&#39;}}catch(e){}</script>
+  <link rel=stylesheet href="assets/style.css">
+ </head>
+</html>
+<body class=page-importing>
+ <a class=skip-link href=#content>Skip to content</a>
+ <div class=layout>
+  <aside class=sidebar id=sidebar>
+   <div class=sidebar-brand>
+    <a class=brand href=index.html><span class=brand-mark>GL</span><span
+     class=brand-copy><span class=brand-name>game-launcher</span><span
+      class=brand-tagline>Guide</span></span></a>
+   </div>
+   <nav class=sidebar-nav
+        aria-label="Guide navigation">
+    <div class=nav-group>
+     <p class=nav-heading>Start here
+     <ul>
+      <li><a class=nav-link href=index.html>Overview</a>
+      <li><a class=nav-link href=getting-started.html>Getting started</a>
+      <li><a class=nav-link href=cli.html>Command line</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Core concepts
+     <ul>
+      <li><a class=nav-link href=store.html>Store files</a>
+      <li><a class=nav-link href=profiles.html>Profiles &amp; environment</a>
+      <li><a class=nav-link href=runtimes.html>Runtimes</a>
+      <li><a class=nav-link href=phases.html>Launch phases</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Guides
+     <ul>
+      <li><a class="nav-link is-active" href=importing.html aria-current=page>Importing 
+        games</a>
+      <li><a class=nav-link href=extending.html>Extending game-launcher</a>
+      <li><a class=nav-link href=library.html>Using it as a library</a>
+     </ul>
+    </div>
+    <div class=nav-group>
+     <p class=nav-heading>Reference
+     <ul>
+      <li><a class=nav-link href=api.html>API reference</a>
+      <li><a class=nav-link href=architecture.html>Architecture</a>
+     </ul>
+    </div>
+   </nav>
+   <div class=sidebar-foot>
+    <span>v0.2.5</span><a rel="noopener noreferrer"
+    href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+   </div>
+  </aside>
+  <div class=main-column>
+   <div class=topbar>
+    <button class="icon-button menu-button"
+            type=button id=menu-toggle
+            aria-label="Toggle navigation"
+            aria-controls=sidebar aria-expanded=false><span class=menu-lines><span></span>
+      <span></span><span></span></span></button>
+    <div class=crumbs>
+     <span class=crumb-group>Guides</span><span class=crumb-sep>/</span><span
+     class=crumb-current>Importing games</span>
+    </div>
+    <div class=topbar-actions>
+     <a class=text-link rel="noopener noreferrer"
+     href="https://github.com/PRL-Mumu/game-launcher" target=_blank>GitHub</a>
+     <button class="icon-button theme-button"
+             type=button id=theme-toggle
+             aria-label="Toggle dark mode"><span class="theme-icon theme-icon-light">☀</span>
+      <span class="theme-icon theme-icon-dark">☾</span></button>
+    </div>
+   </div>
+   <main class=content id=content>
+    <article class=prose>
+     <header class=page-header>
+      <p class=eyebrow>Guides
+      <h1>Importing games</h1>
+      <p class=lede>Bring in desktop entries, Lutris games, and Steam libraries.
+     </header>
+     <div class=markdown><h2 id="importers_are_extensions">Importers are extensions</h2>
+
+<p>Importers live beside runtimes and are loaded only when their dependencies are
+present. The core does not require a database driver or an HTTP client, so a
+minimal install stays small.</p>
+
+<p>Imported launchers are registered exactly like hand-written ones. They inherit
+the normal provenance rules, so the next store save writes them to the primary
+store unless you arrange a different destination.</p>
+
+<h2 id="desktop_entries">Desktop entries</h2>
+
+<pre class="language-sh"><code>game-launcher --import desktop ~/.local/share/applications/my-game.desktop</code></pre>
+
+<p>The desktop importer reads <code>Name</code>, <code>Exec</code>, and <code>Path</code>, strips desktop field
+codes such as <code>%U</code> and <code>%f</code>, and creates an <code>EXEC</code> launcher. The first token
+becomes <code>:EXEC</code> and the rest becomes <code>:ARGS</code>.</p>
+
+<p>Programmatically:</p>
+
+<pre class="language-common-lisp"><code>(game-launcher.desktop:import-desktop-file
+ "/usr/share/applications/some-game.desktop")</code></pre>
+
+<p>The importer is only loaded on Unix-like systems.</p>
+
+<h2 id="lutris">Lutris</h2>
+
+<p>Enable the importer by making sure these systems are installed:</p>
+
+<ul>
+<li><code>cl-dbi</code></li>
+<li><code>cl-yaml</code></li>
+<li><code>sqlite</code></li>
+</ul>
+
+<p>Then import one game or the whole library:</p>
+
+<pre class="language-sh"><code>game-launcher --import lutris "Some Game"
+game-launcher --import lutris all</code></pre>
+
+<p>The importer reads the Lutris database and each game’s YAML configuration. It
+supports the <code>wine</code>, <code>linux</code>, and <code>web</code> runners:</p>
+<table >
+<thead>
+<tr><th>
+Lutris runner</th><th>
+Result</th></tr>
+</thead>
+<tbody>
+<tr><td>
+<code>wine</code></td><td>
+<code>WINE</code> launcher with executable, arguments, environment profile, and Lutris ID.</td></tr>
+<tr><td>
+<code>linux</code></td><td>
+<code>EXEC</code> launcher with executable, arguments, and environment profile.</td></tr>
+<tr><td>
+<code>web</code></td><td>
+<code>BROWSER</code> launcher with the game’s main URL.</td></tr>
+</tbody>
+</table>
+
+<p>Other runners are skipped with a warning. Programmatic entry points are
+<code>game-launcher.lutris:import-lutris-game</code> and
+<code>import-all-lutris-games</code>.</p>
+
+<h2 id="steam">Steam</h2>
+
+<p>Remote lookups use <code>dexador</code> and <code>cl-json</code>. Local ACF parsing has no extra
+dependency.</p>
+
+<pre class="language-sh"><code># One app by ID or URL
+game-launcher --import steam-id 105600
+game-launcher --import steam-id https://store.steampowered.com/app/105600/
+
+# Everything in the local Steam libraries
+game-launcher --import steam-local all
+
+# Preview without registering anything
+game-launcher --import steam-local dry</code></pre>
+
+<p><code>steam-local</code> reads <code>libraryfolders.vdf</code> under the XDG data directory, locates
+every <code>appmanifest_*.acf</code>, and creates a <code>STEAM</code> launcher whose <code>:EXEC</code> is
+<code>steam://rungameid/&lt;id&gt;</code>. Runtime/tooling app IDs are blacklisted and skipped.</p>
+
+<p>Programmatic entry points:</p>
+
+<pre class="language-common-lisp"><code>(game-launcher.steam:import-steam-id "105600")
+(game-launcher.steam:steam-local-import-all)
+(game-launcher.steam:steam-local-import-all :dry t)
+(game-launcher.steam:steam-local-import "105600" "/path/to/Steam")</code></pre>
+
+<h2 id="one-off_forms">One-off forms</h2>
+
+<p>For a single launcher, skip the importers:</p>
+
+<pre class="language-sh"><code>game-launcher --import form '(EXEC :NAME "Test" :EXEC "/home/me/test")'</code></pre>
+
+<p>or from Lisp:</p>
+
+<pre class="language-common-lisp"><code>(game-launcher:import-launcher-form
+ '(exec :name "Test" :exec "/home/me/test"))</code></pre>
+
+<p><code>import-launcher-form</code> accepts either a form or a string containing one. It
+reports and skips anything that is not a launcher form.</p>
+
+<h2 id="where_imported_games_go">Where imported games go</h2>
+
+<p>All importers call <code>register-launcher-instance</code>. At the end of the CLI session,
+the store writer puts each new launcher in the primary store (or in another
+store if you set its provenance yourself). Restart the CLI, or run
+<code>--list</code>, to see the result.</p>
+
+     </div>
+     <nav class=pager
+          aria-label="Previous and next pages">
+      <a class="pager-link pager-prev" href=phases.html><span class=pager-label>Previous</span>
+       <span class=pager-title>Launch phases</span></a><a class="pager-link pager-next"
+      href=extending.html><span class=pager-label>Next</span><span class=pager-title>Extending 
+        game-launcher</span></a>
+     </nav>
+    </article>
+   </main>
+   <footer class=site-foot>
+    <p><span>game-launcher guide</span><span class=dot>·</span><a
+     rel="noopener noreferrer" href="https://github.com/PRL-Mumu/game-launcher"
+     target=_blank>Source on GitHub</a><span class=dot>·</span><span>v0.2.5</span>
+   </footer>
+  </div>
+ </div>
+ <script src="assets/app.js"></script>
+</body>
